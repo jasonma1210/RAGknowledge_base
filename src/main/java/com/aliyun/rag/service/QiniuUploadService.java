@@ -69,7 +69,7 @@ public class QiniuUploadService {
             if (fileName == null || fileName.trim().isEmpty()) {
                 String originalName = file.getOriginalFilename();
                 String extension = getFileExtension(originalName);
-                fileName = UUID.randomUUID().toString() + (extension != null ? "." + extension : "");
+                fileName = UUID.randomUUID() + (extension != null ? "." + extension : "");
             }
             
             // 生成上传凭证

@@ -28,51 +28,5 @@ public class SearchResult {
     
     private Integer position;
     
-    public String getDocumentId() {
-        return documentId;
-    }
-    
-    public void setDocumentId(String documentId) {
-        this.documentId = documentId;
-    }
-    
-    public String getTitle() {
-        return title;
-    }
-    
-    public void setTitle(String title) {
-        this.title = title;
-    }
-    
-    public String getContent() {
-        return content;
-    }
-    
-    public void setContent(String content) {
-        this.content = content;
-    }
-    
-    public Double getScore() {
-        return score;
-    }
-    
-    public void setScore(Double score) {
-        this.score = score;
-    }
-    
-    public String getSource() {
-        return source;
-    }
-    
-    public void setSource(String source) {
-        this.source = source;
-    }
-    
-    public Integer getPosition() {
-        return position;
-    }
-    
-    public void setPosition(Integer position) {
-        this.position = position;
-    }
+
 }

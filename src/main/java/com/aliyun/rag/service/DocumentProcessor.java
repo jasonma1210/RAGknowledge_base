@@ -13,6 +13,7 @@ import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -67,20 +68,14 @@ public class DocumentProcessor {
      * 根据文件类型提取内容
      */
     private String extractContent(MultipartFile file, String fileExtension) throws Exception {
-        switch (fileExtension.toLowerCase()) {
-            case "pdf":
-                return extractPdfContent(file);
-            case "docx":
-                return extractDocxContent(file);
-            case "txt":
-                return extractTxtContent(file);
-            case "md":
-                return extractMdContent(file);
-            case "epub":
-                return extractEpubContent(file);
-            default:
-                throw new IllegalArgumentException("不支持的文件类型: " + fileExtension);
-        }
+        return switch (fileExtension.toLowerCase()) {
+            case "pdf" -> extractPdfContent(file);
+            case "docx" -> extractDocxContent(file);
+            case "txt" -> extractTxtContent(file);
+            case "md" -> extractMdContent(file);
+            case "epub" -> extractEpubContent(file);
+            default -> throw new IllegalArgumentException("不支持的文件类型: " + fileExtension);
+        };
     }
 
     /**
@@ -109,7 +104,7 @@ public class DocumentProcessor {
     private String extractTxtContent(MultipartFile file) throws Exception {
         StringBuilder content = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(file.getInputStream(), "UTF-8"))) {
+                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 content.append(line).append("\n");
@@ -173,13 +168,13 @@ public class DocumentProcessor {
             if (currentChunk.length() + paragraph.length() <= CHUNK_SIZE) {
                 currentChunk.append(paragraph).append("\n\n");
             } else {
-                if (currentChunk.length() > 0) {
+                if (!currentChunk.isEmpty()) {
                     chunks.add(currentChunk.toString().trim());
                     currentChunk = new StringBuilder();
                     
                     // 添加重叠部分
                     if (paragraph.length() > CHUNK_OVERLAP) {
-                        currentChunk.append(paragraph.substring(0, CHUNK_OVERLAP));
+                        currentChunk.append(paragraph, 0, CHUNK_OVERLAP);
                     }
                 } else {
                     // 单个段落超过CHUNK_SIZE，按句子分割
@@ -188,7 +183,7 @@ public class DocumentProcessor {
                         if (currentChunk.length() + sentence.length() <= CHUNK_SIZE) {
                             currentChunk.append(sentence).append(". ");
                         } else {
-                            if (currentChunk.length() > 0) {
+                            if (!currentChunk.isEmpty()) {
                                 chunks.add(currentChunk.toString().trim());
                                 currentChunk = new StringBuilder(sentence).append(". ");
                             } else {
@@ -200,7 +195,7 @@ public class DocumentProcessor {
             }
         }
         
-        if (currentChunk.length() > 0) {
+        if (!currentChunk.isEmpty()) {
             chunks.add(currentChunk.toString().trim());
         }
         

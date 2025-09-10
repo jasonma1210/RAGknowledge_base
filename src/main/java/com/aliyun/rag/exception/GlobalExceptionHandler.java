@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 全局异常处理器
@@ -32,7 +33,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleValidationException(MethodArgumentNotValidException e) {
         Map<String, Object> response = new HashMap<>();
         response.put("error", "参数验证失败");
-        response.put("message", e.getBindingResult().getFieldError().getDefaultMessage());
+        response.put("message", Objects.requireNonNull(e.getBindingResult().getFieldError()).getDefaultMessage());
         response.put("status", HttpStatus.BAD_REQUEST.value());
         return ResponseEntity.badRequest().body(response);
     }

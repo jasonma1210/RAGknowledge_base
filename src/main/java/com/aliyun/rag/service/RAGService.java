@@ -93,24 +93,15 @@ public class RAGService {
             // 生成查询的嵌入向量
             Embedding queryEmbedding = embeddingService.embedText(query);
             
-            List<SearchResult> results;
-            
-            switch (request.getSearchType()) {
-                case SEMANTIC:
-                    results = vectorStoreService.semanticSearch(
+            List<SearchResult> results = switch (request.getSearchType()) {
+                case SEMANTIC -> vectorStoreService.semanticSearch(
                         query, queryEmbedding, request.getMaxResults(), request.getMinScore());
-                    break;
-                case KEYWORD:
-                    results = vectorStoreService.keywordSearch(query, request.getMaxResults());
-                    break;
-                case HYBRID:
-                    results = vectorStoreService.hybridSearch(
+                case KEYWORD -> vectorStoreService.keywordSearch(query, request.getMaxResults());
+                case HYBRID -> vectorStoreService.hybridSearch(
                         query, queryEmbedding, request.getMaxResults(), request.getMinScore());
-                    break;
-                default:
-                    throw new IllegalArgumentException("不支持的搜索类型: " + request.getSearchType());
-            }
-            
+//                default -> throw new IllegalArgumentException("不支持的搜索类型: " + request.getSearchType());
+            };
+
             log.info("搜索完成: {}, 结果数量: {}", query, results.size());
             return results;
             
@@ -148,7 +139,7 @@ public class RAGService {
                 
                 请提供准确、简洁的回答，并引用相关的知识库内容。
                 """,
-                context.toString(),
+                context,
                 question
             );
 
