@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: rag-knowledge-base
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+server:
+  port: 8080
+
+milvus:
+  host: localhost
+  port: 19530
+  collection:
+    name: knowledge_base
+    dimension: 1024
+
+langchain4j:
+  community:
+    dashscope:
+      chat-model:
+        model-name: qwen-max-latest
+        temperature: 0.7
+        max-tokens: 2000
+        api-key: ${your apikey}
+      embedding-model:
+        model-name: text-embedding-v4
+        api-key: ${your apikey}
+
+document:
+  chunk:
+    size: 1000
+    overlap: 200
+  supported-formats: pdf,docx,txt,md,epub
+
+retrieval:
+  top-k: 10
+  score-threshold: 0.7
+
+logging:
+  level:
+    com.aliyun.rag: DEBUG
+    dev.langchain4j: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# 七牛云配置
+qiniu:
+  access-key:  ${your accesskey}
+  secret-key:  ${your secretkey}
+  bucket: ${your bucket}
+  domain: ${your domain}
