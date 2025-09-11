@@ -1,333 +1,326 @@
 # RAG知识库系统API接口文档
 
-## 1. 概述
+## 1. 认证接口
 
-本文档描述了RAG知识库系统提供的RESTful API接口，包括文档管理、知识库搜索和系统健康检查等功能。
+### 1.1 用户注册
 
-## 2. 公共信息
+**接口地址**: `POST /api/auth/register`
 
-### 2.1 基础URL
+**请求头**:
 ```
-http://localhost:8080
+Content-Type: application/json
 ```
 
-### 2.2 请求格式
-- 所有请求和响应数据都使用JSON格式
-- 字符编码为UTF-8
-- 请求头需要包含: `Content-Type: application/json`
+**请求参数**:
+```json
+{
+  "username": "string",  // 用户名（必填）
+  "password": "string",  // 密码（必填）
+  "email": "string"      // 邮箱（可选）
+}
+```
 
-### 2.3 响应格式
-- 成功响应: HTTP状态码200
-- 客户端错误: HTTP状态码400-499
-- 服务器错误: HTTP状态码500-599
+**响应参数**:
+```json
+{
+  "token": "string",     // 访问令牌
+  "user": {              // 用户信息
+    "id": 123,           // 用户ID
+    "username": "string",// 用户名
+    "email": "string",   // 邮箱
+    "level": 0,          // 用户等级（0:普通用户 1:进阶用户）
+    "storageQuota": 123, // 存储配额（字节）
+    "usedStorage": 123,  // 已使用存储空间（字节）
+    "lastLoginTime": "2025-09-11T10:00:00", // 最后登录时间
+    "gmtCreate": "2025-09-11T10:00:00",     // 创建时间
+    "gmtModified": "2025-09-11T10:00:00",   // 修改时间
+    "isDeleted": 0       // 是否删除（0:未删除 1:已删除）
+  },
+  "success": true,       // 是否成功
+  "message": "string"    // 错误信息
+}
+```
 
-## 3. 文档管理接口
+**状态码**:
+- 200: 注册成功
+- 400: 请求参数错误或注册失败
 
-### 3.1 上传文档
+### 1.2 用户登录
+
+**接口地址**: `POST /api/auth/login`
+
+**请求头**:
+```
+Content-Type: application/json
+```
+
+**请求参数**:
+```json
+{
+  "username": "string",  // 用户名（必填）
+  "password": "string"   // 密码（必填）
+}
+```
+
+**响应参数**:
+```json
+{
+  "token": "string",     // 访问令牌
+  "user": {              // 用户信息
+    "id": 123,           // 用户ID
+    "username": "string",// 用户名
+    "email": "string",   // 邮箱
+    "level": 0,          // 用户等级（0:普通用户 1:进阶用户）
+    "storageQuota": 123, // 存储配额（字节）
+    "usedStorage": 123,  // 已使用存储空间（字节）
+    "lastLoginTime": "2025-09-11T10:00:00", // 最后登录时间
+    "gmtCreate": "2025-09-11T10:00:00",     // 创建时间
+    "gmtModified": "2025-09-11T10:00:00",   // 修改时间
+    "isDeleted": 0       // 是否删除（0:未删除 1:已删除）
+  },
+  "success": true,       // 是否成功
+  "message": "string"    // 错误信息
+}
+```
+
+**状态码**:
+- 200: 登录成功
+- 400: 用户名或密码错误
+
+## 2. 文档管理接口
+
+### 2.1 上传文档
 
 **接口地址**: `POST /api/documents/upload`
 
-**请求方式**: `POST`
-
-**请求类型**: `multipart/form-data`
+**请求头**:
+```
+Content-Type: multipart/form-data
+Authorization: Bearer {access_token}
+```
 
 **请求参数**:
+```
+file: 文件（必填）
+title: 文档标题（可选）
+description: 文档描述（可选）
+tags: 标签（可选，逗号分隔）
+```
 
-| 参数名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| file | MultipartFile | 是 | 文档文件 |
-| title | String | 否 | 文档标题 |
-| description | String | 否 | 文档描述 |
-| tags | String | 否 | 标签，多个标签用逗号分隔 |
-
-**成功响应**:
+**响应参数**:
 ```json
 {
-  "id": "文档唯一标识符",
-  "title": "文档标题",
-  "description": "文档描述",
-  "fileName": "文件名",
-  "fileType": "文件类型",
-  "fileSize": 12345,
-  "tags": "标签1,标签2",
-  "uploadTime": "2025-09-09T12:00:00",
-  "chunkCount": 10
+  "id": "string",        // 文档ID
+  "title": "string",     // 文档标题
+  "description": "string",// 文档描述
+  "fileName": "string",  // 文件名
+  "fileType": "string",  // 文件类型
+  "fileSize": 123,       // 文件大小（字节）
+  "tags": "string",      // 标签
+  "uploadTime": "2025-09-11T10:00:00", // 上传时间
+  "chunkCount": 123      // 分块数量
 }
 ```
 
-**错误响应**:
-```json
-{
-  "timestamp": "2025-09-09T12:00:00",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "文档上传失败: 错误信息",
-  "path": "/api/documents/upload"
-}
-```
+**状态码**:
+- 200: 上传成功
+- 400: 请求参数错误或上传失败
+- 401: 未授权访问
 
-### 3.2 获取所有文档
+### 2.2 获取所有文档
 
 **接口地址**: `GET /api/documents`
 
-**请求方式**: `GET`
+**请求头**:
+```
+Authorization: Bearer {access_token}
+```
 
-**请求参数**: 无
-
-**成功响应**:
+**响应参数**:
 ```json
 [
   {
-    "id": "文档唯一标识符",
-    "title": "文档标题",
-    "description": "文档描述",
-    "fileName": "文件名",
-    "fileType": "文件类型",
-    "fileSize": 12345,
-    "tags": "标签1,标签2",
-    "uploadTime": "2025-09-09T12:00:00",
-    "chunkCount": 10
+    "id": "string",        // 文档ID
+    "title": "string",     // 文档标题
+    "description": "string",// 文档描述
+    "fileName": "string",  // 文件名
+    "fileType": "string",  // 文件类型
+    "fileSize": 123,       // 文件大小（字节）
+    "tags": "string",      // 标签
+    "uploadTime": "2025-09-11T10:00:00", // 上传时间
+    "chunkCount": 123      // 分块数量
   }
 ]
 ```
 
-**错误响应**:
-```json
-{
-  "timestamp": "2025-09-09T12:00:00",
-  "status": 500,
-  "error": "Internal Server Error",
-  "message": "获取文档列表失败: 错误信息",
-  "path": "/api/documents"
-}
-```
+**状态码**:
+- 200: 获取成功
+- 401: 未授权访问
+- 500: 服务器内部错误
 
-### 3.3 删除文档
+### 2.3 删除文档
 
 **接口地址**: `DELETE /api/documents/{documentId}`
 
-**请求方式**: `DELETE`
-
-**路径参数**:
-
-| 参数名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| documentId | String | 是 | 文档唯一标识符 |
-
-**成功响应**: HTTP状态码200，无响应体
-
-**错误响应**:
-```json
-{
-  "timestamp": "2025-09-09T12:00:00",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "删除文档失败: 错误信息",
-  "path": "/api/documents/{documentId}"
-}
+**请求头**:
+```
+Authorization: Bearer {access_token}
 ```
 
-## 4. 搜索接口
+**路径参数**:
+```
+documentId: 文档ID
+```
 
-### 4.1 搜索知识库
+**响应参数**:
+```
+无
+```
+
+**状态码**:
+- 200: 删除成功
+- 400: 删除失败
+- 401: 未授权访问
+
+## 3. 搜索接口
+
+### 3.1 知识库搜索
 
 **接口地址**: `POST /api/search`
 
-**请求方式**: `POST`
-
-**请求类型**: `application/json`
+**请求头**:
+```
+Content-Type: application/json
+Authorization: Bearer {access_token}
+```
 
 **请求参数**:
-
-| 参数名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| query | String | 是 | 搜索内容 |
-| searchType | String | 否 | 搜索类型: SEMANTIC(语义搜索)、KEYWORD(关键词搜索)、HYBRID(混合搜索)，默认为SEMANTIC |
-| maxResults | Integer | 否 | 最大返回结果数，默认为10 |
-| minScore | Double | 否 | 最小相似度分数，默认为0.7 |
-
-**请求示例**:
 ```json
 {
-  "query": "人工智能发展趋势",
-  "searchType": "SEMANTIC",
-  "maxResults": 5,
-  "minScore": 0.7
+  "query": "string",      // 搜索内容（必填）
+  "searchType": "SEMANTIC",// 搜索类型（可选，默认SEMANTIC）
+  "maxResults": 10,       // 最大结果数（可选，默认10）
+  "minScore": 0.7         // 最小相似度分数（可选，默认0.7）
 }
 ```
 
-**成功响应**:
+**搜索类型说明**:
+- SEMANTIC: 语义搜索
+- KEYWORD: 关键词搜索
+- HYBRID: 混合搜索
+
+**响应参数**:
 ```json
 [
   {
-    "documentId": "文档唯一标识符",
-    "title": "文档标题",
-    "content": "匹配的文档内容片段",
-    "score": 0.85,
-    "source": "文档来源",
-    "position": 1
+    "fileRecordId": "string",  // 文件记录ID
+    "title": "string",       // 文档标题
+    "content": "string",     // 匹配内容
+    "score": 0.8,            // 相似度分数
+    "source": "string",      // 来源
+    "position": 123          // 位置
   }
 ]
 ```
 
-**错误响应**:
-```json
-{
-  "timestamp": "2025-09-09T12:00:00",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "搜索失败: 错误信息",
-  "path": "/api/search"
-}
-```
+**状态码**:
+- 200: 搜索成功
+- 400: 请求参数错误或搜索失败
+- 401: 未授权访问
 
-### 4.2 简单搜索
+### 3.2 简单搜索
 
 **接口地址**: `GET /api/search/simple`
 
-**请求方式**: `GET`
+**请求头**:
+```
+Authorization: Bearer {access_token}
+```
 
 **请求参数**:
-
-| 参数名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| query | String | 是 | 搜索内容 |
-| type | String | 否 | 搜索类型: SEMANTIC(语义搜索)、KEYWORD(关键词搜索)、HYBRID(混合搜索)，默认为SEMANTIC |
-| limit | Integer | 否 | 最大返回结果数，默认为10 |
-
-**请求示例**:
 ```
-GET /api/search/simple?query=人工智能发展趋势&type=SEMANTIC&limit=5
+query: 搜索内容（必填）
+type: 搜索类型（可选，默认SEMANTIC）
+limit: 最大结果数（可选，默认10）
 ```
 
-**成功响应**:
+**响应参数**:
 ```json
 [
   {
-    "documentId": "文档唯一标识符",
-    "title": "文档标题",
-    "content": "匹配的文档内容片段",
-    "score": 0.85,
-    "source": "文档来源",
-    "position": 1
+    "fileRecordId": "string",  // 文件记录ID
+    "title": "string",       // 文档标题
+    "content": "string",     // 匹配内容
+    "score": 0.8,            // 相似度分数
+    "source": "string",      // 来源
+    "position": 123          // 位置
   }
 ]
 ```
 
-**错误响应**:
-```json
-{
-  "timestamp": "2025-09-09T12:00:00",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "搜索失败: 错误信息",
-  "path": "/api/search/simple"
-}
-```
+**状态码**:
+- 200: 搜索成功
+- 400: 请求参数错误或搜索失败
+- 401: 未授权访问
 
-### 4.3 AI问答
+## 4. 问答接口
+
+### 4.1 智能问答
 
 **接口地址**: `POST /api/search/ask`
 
-**请求方式**: `POST`
+**请求头**:
+```
+Authorization: Bearer {access_token}
+```
 
 **请求参数**:
-
-| 参数名 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| question | String | 是 | 问题内容 |
-| searchType | String | 否 | 搜索类型: SEMANTIC(语义搜索)、KEYWORD(关键词搜索)、HYBRID(混合搜索)，默认为SEMANTIC |
-| maxResults | Integer | 否 | 最大返回结果数，默认为10 |
-| minScore | Double | 否 | 最小相似度分数，默认为0.7 |
-
-**请求示例**:
 ```
-POST /api/search/ask?question=什么是深度学习&searchType=HYBRID&maxResults=5&minScore=0.7
+question: 问题内容（必填）
+searchType: 搜索类型（可选，默认SEMANTIC）
+maxResults: 最大结果数（可选，默认10）
+minScore: 最小相似度分数（可选，默认0.7）
 ```
 
-**成功响应**:
+**响应参数**:
 ```json
 {
-  "question": "问题内容",
-  "answer": "基于检索到的文档内容生成的回答",
-  "sources": [
+  "question": "string",      // 问题内容
+  "answer": "string",        // 回答内容
+  "sources": [               // 来源信息
     {
-      "documentId": "文档唯一标识符",
-      "title": "文档标题",
-      "content": "匹配的文档内容片段",
-      "score": 0.85,
-      "source": "文档来源",
-      "position": 1
+      "fileRecordId": "string",  // 文件记录ID
+      "title": "string",       // 文档标题
+      "content": "string",     // 匹配内容
+      "score": 0.8,            // 相似度分数
+      "source": "string",      // 来源
+      "position": 123          // 位置
     }
   ],
-  "sourceCount": 1
+  "sourceCount": 123         // 来源数量
 }
 ```
 
-**错误响应**:
-```json
-{
-  "timestamp": "2025-09-09T12:00:00",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "问答失败: 错误信息",
-  "path": "/api/search/ask"
-}
-```
+**状态码**:
+- 200: 问答成功
+- 400: 请求参数错误或问答失败
+- 401: 未授权访问
 
-## 5. 健康检查接口
+## 5. 错误码说明
 
-### 5.1 系统健康状态
-
-**接口地址**: `GET /health`
-
-**请求方式**: `GET`
-
-**请求参数**: 无
-
-**成功响应**:
-```json
-{
-  "status": "UP",
-  "service": "RAG Knowledge Base System",
-  "version": "1.0.0"
-}
-```
-
-## 6. 错误码说明
-
-| HTTP状态码 | 说明 |
-| --- | --- |
+| 状态码 | 说明 |
+|-------|------|
 | 200 | 请求成功 |
-| 400 | 客户端请求参数错误 |
-| 404 | 请求的资源不存在 |
+| 400 | 请求参数错误或业务处理失败 |
+| 401 | 未授权访问 |
 | 500 | 服务器内部错误 |
 
-## 7. 使用示例
+## 6. 认证方式
 
-### 7.1 上传文档
-```bash
-curl -X POST http://localhost:8080/api/documents/upload \
-  -F "file=@example.pdf" \
-  -F "title=示例文档" \
-  -F "description=这是一个测试文档" \
-  -F "tags=测试,示例"
+除注册和登录接口外，其他接口都需要在请求头中添加认证信息：
+
+```
+Authorization: Bearer {access_token}
 ```
 
-### 7.2 搜索文档
-```bash
-# 语义搜索
-curl -X POST http://localhost:8080/api/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "人工智能发展趋势", "searchType": "SEMANTIC", "maxResults": 5}'
-
-# 关键词搜索
-curl -X POST http://localhost:8080/api/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "机器学习", "searchType": "KEYWORD", "maxResults": 5}'
-```
-
-### 7.3 AI问答
-```bash
-curl -X POST "http://localhost:8080/api/search/ask?question=什么是深度学习&searchType=HYBRID&maxResults=3"
-```
+其中 `{access_token}` 为用户登录成功后返回的token值。

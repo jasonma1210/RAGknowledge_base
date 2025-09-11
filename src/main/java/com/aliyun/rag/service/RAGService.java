@@ -4,6 +4,9 @@ import com.aliyun.rag.model.DocumentInfo;
 import com.aliyun.rag.model.DocumentRequest;
 import com.aliyun.rag.model.SearchRequest;
 import com.aliyun.rag.model.SearchResult;
+import com.aliyun.rag.model.User;
+import com.aliyun.rag.model.UserFileRecord;
+import com.aliyun.rag.repository.UserFileRecordRepository;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.chat.ChatModel;
 import org.slf4j.Logger;
@@ -34,27 +37,31 @@ public class RAGService {
     private final EmbeddingService embeddingService;
     private final VectorStoreService vectorStoreService;
     private final ChatModel qwenChatModel;
+    private final UserFileRecordRepository userFileRecordRepository;
 
     public RAGService(DocumentProcessor documentProcessor,
                      EmbeddingService embeddingService,
                      VectorStoreService vectorStoreService,
-                     ChatModel qwenChatModel) {
+                     ChatModel qwenChatModel,
+                     UserFileRecordRepository userFileRecordRepository) {
         this.documentProcessor = documentProcessor;
         this.embeddingService = embeddingService;
         this.vectorStoreService = vectorStoreService;
         this.qwenChatModel = qwenChatModel;
+        this.userFileRecordRepository = userFileRecordRepository;
     }
 
     /**
      * 上传并处理文档
      */
-    public DocumentInfo uploadDocument(DocumentRequest request) {
+    public DocumentInfo uploadDocument(DocumentRequest request, User user, String fileUrl) {
         try {
             MultipartFile file = request.getFile();
             
             // 创建文档信息
             DocumentInfo documentInfo = new DocumentInfo();
-            documentInfo.setId(UUID.randomUUID().toString());
+            String documentId = UUID.randomUUID().toString();
+            documentInfo.setId(documentId);
             documentInfo.setTitle(request.getTitle() != null ? request.getTitle() : file.getOriginalFilename());
             documentInfo.setDescription(request.getDescription());
             documentInfo.setTags(request.getTags());
@@ -70,10 +77,24 @@ public class RAGService {
             // 生成嵌入向量
             List<Embedding> embeddings = embeddingService.embedTextChunks(chunks);
             
-            // 存储到向量数据库
-            vectorStoreService.storeDocument(documentInfo.getId(), chunks, embeddings, documentInfo);
+            // 保存用户文件记录到数据库
+            UserFileRecord userFileRecord = new UserFileRecord();
+            userFileRecord.setUserId(user.getId());
+            userFileRecord.setFileName(file.getOriginalFilename());
+            userFileRecord.setFilePath(fileUrl);
+            userFileRecord.setFileSize(file.getSize());
+            userFileRecord.setFileType(getFileExtension(file.getOriginalFilename()));
+            userFileRecord.setUploadTime(LocalDateTime.now());
+            userFileRecord.setGmtCreate(LocalDateTime.now());
+            userFileRecord.setGmtModified(LocalDateTime.now());
+            userFileRecord.setIsDeleted(0);
             
-            log.info("文档上传成功: {}, 分块数量: {}", documentInfo.getId(), chunks.length);
+            userFileRecordRepository.save(userFileRecord);
+            
+            // 存储到向量数据库（使用数据库记录ID、用户ID和用户名）
+            vectorStoreService.storeDocument(userFileRecord.getId(), user.getId(), user.getUsername(), chunks, embeddings, documentInfo);
+            
+            log.info("文档上传成功: {}, 分块数量: {}", documentId, chunks.length);
             
             return documentInfo;
             
@@ -86,7 +107,7 @@ public class RAGService {
     /**
      * 搜索知识库
      */
-    public List<SearchResult> searchKnowledgeBase(SearchRequest request) {
+    public List<SearchResult> searchKnowledgeBase(SearchRequest request, User user) {
         try {
             String query = request.getQuery();
             
@@ -95,10 +116,10 @@ public class RAGService {
             
             List<SearchResult> results = switch (request.getSearchType()) {
                 case SEMANTIC -> vectorStoreService.semanticSearch(
-                        query, queryEmbedding, request.getMaxResults(), request.getMinScore());
-                case KEYWORD -> vectorStoreService.keywordSearch(query, request.getMaxResults());
+                        query, queryEmbedding, request.getMaxResults(), request.getMinScore(), user.getId(), user.getUsername());
+                case KEYWORD -> vectorStoreService.keywordSearch(query, request.getMaxResults(), user.getId(), user.getUsername());
                 case HYBRID -> vectorStoreService.hybridSearch(
-                        query, queryEmbedding, request.getMaxResults(), request.getMinScore());
+                        query, queryEmbedding, request.getMaxResults(), request.getMinScore(), user.getId(), user.getUsername());
 //                default -> throw new IllegalArgumentException("不支持的搜索类型: " + request.getSearchType());
             };
 
@@ -158,10 +179,10 @@ public class RAGService {
     /**
      * 问答接口
      */
-    public Map<String, Object> askQuestion(String question, SearchRequest searchRequest) {
+    public Map<String, Object> askQuestion(String question, SearchRequest searchRequest, User user) {
         try {
             // 搜索相关知识
-            List<SearchResult> searchResults = searchKnowledgeBase(searchRequest);
+            List<SearchResult> searchResults = searchKnowledgeBase(searchRequest, user);
             
             // 生成回答
             String answer = generateAnswer(question, searchResults);
@@ -183,21 +204,64 @@ public class RAGService {
     /**
      * 获取所有文档
      */
-    public List<DocumentInfo> getAllDocuments() {
-        // 这里简化实现，实际应该从数据库获取
-        return new ArrayList<>();
+    public List<DocumentInfo> getAllDocuments(User user) {
+        try {
+            // 从数据库获取用户的所有文件记录
+            List<UserFileRecord> userFileRecords = userFileRecordRepository.findByUserIdAndIsDeleted(user.getId(), 0);
+            
+            // 转换为DocumentInfo列表
+            List<DocumentInfo> documentInfos = new ArrayList<>();
+            for (UserFileRecord record : userFileRecords) {
+                DocumentInfo documentInfo = new DocumentInfo();
+                documentInfo.setId(record.getId().toString()); // 使用数据库记录ID
+                documentInfo.setTitle(record.getFileName());
+                documentInfo.setFileName(record.getFilePath());
+                documentInfo.setFileSize(record.getFileSize());
+                documentInfo.setFileType(record.getFileType());
+                documentInfo.setUploadTime(record.getUploadTime());
+                documentInfos.add(documentInfo);
+            }
+            
+            return documentInfos;
+        } catch (Exception e) {
+            log.error("获取文档列表失败: {}", e.getMessage(), e);
+            throw new RuntimeException("获取文档列表失败: " + e.getMessage(), e);
+        }
     }
 
     /**
      * 删除文档
      */
-    public void deleteDocument(String documentId) {
+    public void deleteDocument(String documentId, User user) {
         try {
-            vectorStoreService.deleteDocument(documentId);
+            // 删除向量数据库中的文档（使用数据库记录ID、用户ID和用户名）
+            vectorStoreService.deleteDocument(Long.valueOf(documentId), user.getId(), user.getUsername());
+            
+            // 删除数据库中的文件记录
+            Optional<UserFileRecord> optionalRecord = userFileRecordRepository.findByIdAndUserIdAndIsDeleted(
+                Long.valueOf(documentId), user.getId(), 0);
+            
+            if (optionalRecord.isPresent()) {
+                UserFileRecord record = optionalRecord.get();
+                record.setIsDeleted(1); // 标记为已删除
+                record.setGmtModified(LocalDateTime.now());
+                userFileRecordRepository.save(record);
+            }
+            
             log.info("文档删除成功: {}", documentId);
         } catch (Exception e) {
             log.error("文档删除失败: {}", e.getMessage(), e);
             throw new RuntimeException("文档删除失败: " + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String fileName) {
+        if (fileName == null || fileName.lastIndexOf('.') == -1) {
+            return "";
+        }
+        return fileName.substring(fileName.lastIndexOf('.') + 1);
     }
 }

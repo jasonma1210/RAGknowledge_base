@@ -8,6 +8,12 @@
 
 ## 核心功能
 
+### 👥 多用户支持
+- **用户注册与登录**：支持用户注册和登录功能
+- **用户等级管理**：普通用户(5GB存储)和进阶用户(100GB存储)
+- **独立数据空间**：每个用户拥有独立的知识库和文件存储空间
+- **AI问答长记忆**：支持为每个用户保存问答历史记录(默认20条)
+
 ### 📚 文档管理
 - **多格式支持**：支持PDF、DOCX、TXT、MD、EPUB等多种文档格式上传和解析
 - **元数据管理**：支持为文档添加标题、描述和标签等元数据信息
@@ -24,6 +30,71 @@
 - **智能问答**：基于检索到的相关文档内容，使用大语言模型生成准确的回答
 - **上下文理解**：能够理解复杂问题并提供详细的解答
 - **来源追溯**：提供回答所依据的文档来源信息
+- **长记忆支持**：保存问答历史记录，支持上下文对话
+
+## 数据库设计
+
+### 表结构说明
+
+#### 用户信息表 (user_info)
+存储用户基本信息、认证信息和存储配额管理。
+
+#### 用户文件上传记录表 (user_file_record)
+记录用户上传的文件信息，包括文件名、路径、大小等元数据。
+
+#### 文档与Milvus向量ID映射表 (document_milvus_mapping)
+存储用户上传文件与Milvus向量ID的映射关系，一个文件对应多个向量ID。
+
+### 设计思路更新
+为了更好地管理用户上传文件与向量数据的关联关系，我们对`document_milvus_mapping`表进行了优化：
+1. 将原来的`document_id`字段改为`file_record_id`，直接指向`user_file_record`表的主键
+2. 这样设计可以更清晰地表达文件记录与向量ID的1对多关系
+3. 便于后续的数据维护和查询优化
+
+## 用户数据隔离实现
+
+为了确保每个用户只能访问自己的知识库数据，我们采用了更安全的方案：每个用户拥有独立的Milvus collection。
+
+### 实现方案
+1. **用户独立Collection**：每个用户拥有一个独立的Milvus collection，命名规则为`用户名_用户ID`
+2. **完全数据隔离**：不同用户的数据存储在不同的collection中，实现物理隔离
+3. **自动Collection创建**：系统会根据用户信息自动创建和管理用户的collection
+
+### 实现流程
+1. 用户上传文档时，系统根据用户信息创建独立的Milvus collection（如果不存在）
+2. 文档向量存储在用户专属的collection中
+3. 用户进行搜索或问答时，系统直接访问用户专属的collection
+4. 由于数据存储在独立的collection中，天然实现了数据隔离
+
+### 配置说明
+系统会根据用户信息自动创建Milvus collection，无需手动配置每个用户的collection：
+
+```java
+/**
+ * 为指定用户创建MilvusEmbeddingStore实例
+ * 每个用户使用独立的collection实现数据隔离
+ * 
+ * @param userId 用户ID
+ * @param username 用户名
+ * @return MilvusEmbeddingStore实例
+ */
+public MilvusEmbeddingStore createUserEmbeddingStore(Long userId, String username) {
+    // 使用用户名和用户ID组合命名collection，确保唯一性
+    String collectionName = username + "_" + userId;
+    
+    return MilvusEmbeddingStore.builder()
+            .host(host)
+            .port(port)
+            .collectionName(collectionName)
+            .dimension(dimension)
+            .idFieldName("id") // 明确指定ID字段名
+            .textFieldName("text") // 明确指定文本字段名
+            .vectorFieldName("vector") // 明确指定向量字段名
+            .build();
+}
+```
+
+这种实现方式提供了更强的数据隔离性，每个用户的数据完全独立存储，从根本上避免了数据泄露的风险，提高了系统的安全性和隐私保护。
 
 ## 技术架构
 
@@ -32,17 +103,26 @@
 - **语言**：Java 17
 - **AI框架**：LangChain4j 1.4.0（社区版）
 - **向量数据库**：Milvus 2.4.5
+- **文件存储**：七牛云对象存储
 - **AI模型**：
   - 聊天模型：阿里DashScope qwen-max-latest
   - 嵌入模型：阿里DashScope text-embedding-v4
 
 ### 核心组件
-1. **DocumentProcessor**：文档处理服务，负责解析各种格式的文档并进行智能分块
-2. **EmbeddingService**：嵌入服务，使用阿里DashScope模型将文本转换为向量表示
-3. **VectorStoreService**：向量存储服务，基于Milvus实现向量的存储和检索
-4. **RAGService**：核心业务服务，整合各组件提供完整的RAG功能
+1. **AuthService**：用户认证服务，提供注册、登录和认证功能
+2. **DocumentProcessor**：文档处理服务，负责解析各种格式的文档并进行智能分块
+3. **EmbeddingService**：嵌入服务，使用阿里DashScope模型将文本转换为向量表示
+4. **VectorStoreService**：向量存储服务，基于Milvus实现向量的存储和检索
+5. **RAGService**：核心业务服务，整合各组件提供完整的RAG功能
+6. **QiniuUploadService**：七牛云文件上传服务，支持多用户独立存储
 
 ## 系统特点
+
+### 多用户支持
+- 完整的用户注册、登录和认证流程
+- 基于用户等级的存储配额管理（普通用户5GB，进阶用户100GB）
+- 每个用户拥有独立的知识库和文件存储空间，数据完全隔离
+- 支持AI问答长记忆功能，为每个用户保存问答历史记录
 
 ### 高效性
 - 使用Milvus向量数据库实现毫秒级的向量检索
@@ -53,6 +133,7 @@
 - 基于大语言模型的语义理解和生成能力
 - 支持多种搜索模式满足不同场景需求
 - 提供准确的问答服务和来源追溯
+- 支持上下文对话的长记忆功能
 
 ### 易用性
 - RESTful API设计，接口简洁明了
@@ -94,6 +175,17 @@ langchain4j:
         api-key: your-dashscope-api-key
 ```
 
+### 配置七牛云存储
+
+在`application.yml`中添加七牛云配置：
+```yaml
+qiniu:
+  access-key: your-qiniu-access-key
+  secret-key: your-qiniu-secret-key
+  bucket: your-bucket-name
+  domain: your-domain
+```
+
 ### 启动应用
 
 #### 本地启动
@@ -117,12 +209,38 @@ docker-compose up -d
 
 ## API接口文档
 
+### 认证接口
+
+#### 用户注册
+```http
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "username": "用户名",
+  "password": "密码",
+  "email": "邮箱"
+}
+```
+
+#### 用户登录
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "username": "用户名",
+  "password": "密码"
+}
+```
+
 ### 文档管理接口
 
 #### 上传文档
 ```http
 POST /api/documents/upload
 Content-Type: multipart/form-data
+Authorization: Bearer <access_token>
 
 表单字段：
 - file: 文档文件（必需）
@@ -134,11 +252,13 @@ Content-Type: multipart/form-data
 #### 获取文档列表
 ```http
 GET /api/documents
+Authorization: Bearer <access_token>
 ```
 
 #### 删除文档
 ```http
 DELETE /api/documents/{documentId}
+Authorization: Bearer <access_token>
 ```
 
 ### 搜索接口
@@ -147,6 +267,7 @@ DELETE /api/documents/{documentId}
 ```http
 POST /api/search
 Content-Type: application/json
+Authorization: Bearer <access_token>
 
 {
   "query": "搜索内容",
@@ -159,11 +280,13 @@ Content-Type: application/json
 #### 简单搜索
 ```http
 GET /api/search/simple?query=搜索内容&type=SEMANTIC&limit=10
+Authorization: Bearer <access_token>
 ```
 
 #### AI问答
 ```http
 POST /api/search/ask?question=你的问题&searchType=HYBRID&maxResults=5&minScore=0.7
+Authorization: Bearer <access_token>
 ```
 
 ### 健康检查
@@ -186,6 +309,13 @@ milvus:
   collection:
     name: knowledge_base
   dimension: 1536  # 向量维度
+
+# 七牛云配置
+qiniu:
+  access-key: your-qiniu-access-key
+  secret-key: your-qiniu-secret-key
+  bucket: your-bucket-name
+  domain: your-domain
 
 # 文档处理配置
 document:
@@ -212,8 +342,12 @@ src/main/java/com/aliyun/rag/
 └── exception/       # 异常处理
 ```
 
-
 ### 服务说明
+
+#### AuthService（用户认证服务）
+- 提供用户注册、登录和认证功能
+- 管理用户信息和存储配额
+- 实现基于令牌的用户认证机制
 
 #### DocumentProcessor（文档处理服务）
 - 支持PDF、DOCX、TXT、MD、EPUB格式解析
@@ -235,33 +369,56 @@ src/main/java/com/aliyun/rag/
 - 提供AI问答功能
 - 事务管理和错误处理
 
+#### QiniuUploadService（七牛云上传服务）
+- 实现多用户独立文件存储
+- 按用户名和时间创建文件目录结构
+- 支持多种文件格式上传
+
 ## 使用示例
 
-### 1. 上传文档
+### 1. 用户注册与登录
 ```bash
+# 用户注册
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "password123", "email": "test@example.com"}'
+
+# 用户登录
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "password123"}'
+```
+
+### 2. 上传文档
+```bash
+# 获取访问令牌后上传文档
 curl -X POST http://localhost:8080/api/documents/upload \
+  -H "Authorization: Bearer your-access-token" \
   -F "file=@example.pdf" \
   -F "title=示例文档" \
   -F "description=这是一个测试文档" \
   -F "tags=测试,示例"
 ```
 
-### 2. 搜索文档
+### 3. 搜索文档
 ```bash
 # 语义搜索
 curl -X POST http://localhost:8080/api/search \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-access-token" \
   -d '{"query": "人工智能发展趋势", "searchType": "SEMANTIC", "maxResults": 5}'
 
 # 关键词搜索
 curl -X POST http://localhost:8080/api/search \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-access-token" \
   -d '{"query": "机器学习", "searchType": "KEYWORD", "maxResults": 5}'
 ```
 
-### 3. AI问答
+### 4. AI问答
 ```bash
-curl -X POST "http://localhost:8080/api/search/ask?question=什么是深度学习&searchType=HYBRID&maxResults=3"
+curl -X POST "http://localhost:8080/api/search/ask?question=什么是深度学习&searchType=HYBRID&maxResults=3" \
+  -H "Authorization: Bearer your-access-token"
 ```
 
 ## 部署说明
@@ -271,6 +428,8 @@ curl -X POST "http://localhost:8080/api/search/ask?question=什么是深度学�
 1. **环境变量配置**
    ```bash
    export DASHSCOPE_API_KEY=your-dashscope-api-key
+   export QINIU_ACCESS_KEY=your-qiniu-access-key
+   export QINIU_SECRET_KEY=your-qiniu-secret-key
    export MILVUS_HOST=milvus-server
    export MILVUS_PORT=19530
    ```

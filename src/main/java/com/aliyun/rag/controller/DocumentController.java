@@ -2,6 +2,7 @@ package com.aliyun.rag.controller;
 
 import com.aliyun.rag.model.DocumentInfo;
 import com.aliyun.rag.model.DocumentRequest;
+import com.aliyun.rag.model.User;
 import com.aliyun.rag.service.RAGService;
 import com.aliyun.rag.service.QiniuUploadService;
 import org.slf4j.Logger;
@@ -9,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 
@@ -42,13 +44,16 @@ public class DocumentController {
      * 上传文档
      */
     @PostMapping("/upload")
-    public ResponseEntity<?> uploadDocument(@Valid @ModelAttribute DocumentRequest request) {
+    public ResponseEntity<?> uploadDocument(@Valid @ModelAttribute DocumentRequest request, HttpServletRequest httpRequest) {
         try {
-            // 先上传文件到七牛云
-            String fileUrl = qiniuUploadService.uploadFile(request.getFile());
+            // 获取当前用户
+            User currentUser = (User) httpRequest.getAttribute("currentUser");
             
-            // 然后处理文档内容用于知识库
-            DocumentInfo documentInfo = ragService.uploadDocument(request);
+            // 先上传文件到七牛云
+            String fileUrl = qiniuUploadService.uploadFile(request.getFile(), currentUser);
+
+            // 然后处理文档内容用于知识库，并保存数据库记录
+            DocumentInfo documentInfo = ragService.uploadDocument(request, currentUser, fileUrl);
             
             // 添加文件URL到响应中
             documentInfo.setFileName(fileUrl);
@@ -64,9 +69,12 @@ public class DocumentController {
      * 获取所有文档
      */
     @GetMapping
-    public ResponseEntity<List<DocumentInfo>> getAllDocuments() {
+    public ResponseEntity<List<DocumentInfo>> getAllDocuments(HttpServletRequest httpRequest) {
         try {
-            List<DocumentInfo> documents = ragService.getAllDocuments();
+            // 获取当前用户
+            User currentUser = (User) httpRequest.getAttribute("currentUser");
+            
+            List<DocumentInfo> documents = ragService.getAllDocuments(currentUser);
             return ResponseEntity.ok(documents);
         } catch (Exception e) {
             log.error("获取文档列表失败", e);
@@ -78,9 +86,12 @@ public class DocumentController {
      * 删除文档
      */
     @DeleteMapping("/{documentId}")
-    public ResponseEntity<?> deleteDocument(@PathVariable String documentId) {
+    public ResponseEntity<?> deleteDocument(@PathVariable String documentId, HttpServletRequest httpRequest) {
         try {
-            ragService.deleteDocument(documentId);
+            // 获取当前用户
+            User currentUser = (User) httpRequest.getAttribute("currentUser");
+            
+            ragService.deleteDocument(documentId, currentUser);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("删除文档失败", e);

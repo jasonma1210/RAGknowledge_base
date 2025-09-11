@@ -1,5 +1,6 @@
 package com.aliyun.rag.service;
 
+import com.aliyun.rag.model.User;
 import com.qiniu.common.QiniuException;
 import com.qiniu.http.Response;
 import com.qiniu.storage.Configuration;
@@ -10,10 +11,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.PostConstruct;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 /**
@@ -59,11 +63,12 @@ public class QiniuUploadService {
      * 上传文件到七牛云
      * 
      * @param file 要上传的文件
+     * @param user 用户信息
      * @param fileName 文件名（可选，如果为空则自动生成）
      * @return 文件访问URL
      * @throws RuntimeException 上传失败时抛出异常
      */
-    public String uploadFile(MultipartFile file, String fileName) {
+    public String uploadFile(MultipartFile file, User user, String fileName) {
         try {
             // 如果文件名为空，则生成唯一文件名
             if (fileName == null || fileName.trim().isEmpty()) {
@@ -72,15 +77,20 @@ public class QiniuUploadService {
                 fileName = UUID.randomUUID() + (extension != null ? "." + extension : "");
             }
             
+            // 生成用户目录结构：用户名/年月/文件名
+            String userDir = user.getUsername();
+            String dateDir = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
+            String key = userDir + "/" + dateDir + "/" + fileName;
+            
             // 生成上传凭证
             String upToken = auth.uploadToken(bucket);
             
             // 上传文件
-            Response response = uploadManager.put(file.getBytes(), fileName, upToken);
+            Response response = uploadManager.put(file.getBytes(), key, upToken);
             
             if (response.isOK()) {
-                log.info("文件上传成功: {}", fileName);
-                return domain + "/" + fileName;
+                log.info("文件上传成功: {}", key);
+                return domain + "/" + key;
             } else {
                 log.error("文件上传失败: {}", response.error);
                 throw new RuntimeException("文件上传失败: " + response.error);
@@ -98,11 +108,38 @@ public class QiniuUploadService {
      * 上传文件到七牛云（自动生成文件名）
      * 
      * @param file 要上传的文件
+     * @param user 用户信息
+     * @return 文件访问URL
+     * @throws RuntimeException 上传失败时抛出异常
+     */
+    public String uploadFile(MultipartFile file, User user) {
+        return uploadFile(file, user, null);
+    }
+    
+    /**
+     * 上传文件到七牛云（兼容旧接口）
+     * 
+     * @param file 要上传的文件
+     * @param fileName 文件名
+     * @return 文件访问URL
+     * @throws RuntimeException 上传失败时抛出异常
+     */
+    public String uploadFile(MultipartFile file, String fileName) {
+        // 创建一个默认用户用于兼容旧接口
+        User defaultUser = new User();
+        defaultUser.setUsername("default");
+        return uploadFile(file, defaultUser, fileName);
+    }
+    
+    /**
+     * 上传文件到七牛云（兼容旧接口，自动生成文件名）
+     * 
+     * @param file 要上传的文件
      * @return 文件访问URL
      * @throws RuntimeException 上传失败时抛出异常
      */
     public String uploadFile(MultipartFile file) {
-        return uploadFile(file, null);
+        return uploadFile(file, (String) null);
     }
     
     /**

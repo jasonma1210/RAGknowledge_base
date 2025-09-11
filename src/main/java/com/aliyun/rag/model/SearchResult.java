@@ -16,7 +16,7 @@ import lombok.Data;
 @Data
 public class SearchResult {
     
-    private String documentId;
+    private String fileRecordId;
     
     private String title;
     
