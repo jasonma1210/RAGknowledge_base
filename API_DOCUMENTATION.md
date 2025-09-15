@@ -4,7 +4,7 @@
 
 ### 1.1 用户注册
 
-**接口地址**: `POST /api/auth/register`
+**接口地址**: `POST /auth/register`
 
 **请求头**:
 ```
@@ -47,7 +47,7 @@ Content-Type: application/json
 
 ### 1.2 用户登录
 
-**接口地址**: `POST /api/auth/login`
+**接口地址**: `POST /auth/login`
 
 **请求头**:
 ```
@@ -87,11 +87,40 @@ Content-Type: application/json
 - 200: 登录成功
 - 400: 用户名或密码错误
 
+### 1.3 获取用户信息
+
+**接口地址**: `GET /auth/profile`
+
+**请求头**:
+```
+Authorization: Bearer {access_token}
+```
+
+**响应参数**:
+```json
+{
+  "id": 123,           // 用户ID
+  "username": "string",// 用户名
+  "email": "string",   // 邮箱
+  "level": 0,          // 用户等级（0:普通用户 1:进阶用户）
+  "storageQuota": 123, // 存储配额（字节）
+  "usedStorage": 123,  // 已使用存储空间（字节）
+  "lastLoginTime": "2025-09-11T10:00:00", // 最后登录时间
+  "gmtCreate": "2025-09-11T10:00:00",     // 创建时间
+  "gmtModified": "2025-09-11T10:00:00",   // 修改时间
+  "isDeleted": 0       // 是否删除（0:未删除 1:已删除）
+}
+```
+
+**状态码**:
+- 200: 获取成功
+- 401: 未授权访问
+
 ## 2. 文档管理接口
 
 ### 2.1 上传文档
 
-**接口地址**: `POST /api/documents/upload`
+**接口地址**: `POST /documents/upload`
 
 **请求头**:
 ```
@@ -127,9 +156,14 @@ tags: 标签（可选，逗号分隔）
 - 400: 请求参数错误或上传失败
 - 401: 未授权访问
 
+**接口说明**:
+- 上传文档时，系统会检查用户存储配额，如果存储空间不足将返回错误
+- 上传成功后，系统会自动更新用户的存储使用情况
+- 支持多种文档格式，包括PDF、Word、TXT等
+
 ### 2.2 获取所有文档
 
-**接口地址**: `GET /api/documents`
+**接口地址**: `GET /documents`
 
 **请求头**:
 ```
@@ -160,7 +194,7 @@ Authorization: Bearer {access_token}
 
 ### 2.3 删除文档
 
-**接口地址**: `DELETE /api/documents/{documentId}`
+**接口地址**: `DELETE /documents/{documentId}`
 
 **请求头**:
 ```
@@ -182,11 +216,16 @@ documentId: 文档ID
 - 400: 删除失败
 - 401: 未授权访问
 
+**接口说明**:
+- 删除文档时，系统会同时从数据库、七牛云存储和向量数据库中删除相关数据
+- 删除操作会更新用户的存储使用情况，释放相应的存储空间
+- 删除操作不可逆，请谨慎操作
+
 ## 3. 搜索接口
 
 ### 3.1 知识库搜索
 
-**接口地址**: `POST /api/search`
+**接口地址**: `POST /search`
 
 **请求头**:
 ```
@@ -230,7 +269,7 @@ Authorization: Bearer {access_token}
 
 ### 3.2 简单搜索
 
-**接口地址**: `GET /api/search/simple`
+**接口地址**: `GET /search/simple`
 
 **请求头**:
 ```
@@ -267,7 +306,7 @@ limit: 最大结果数（可选，默认10）
 
 ### 4.1 智能问答
 
-**接口地址**: `POST /api/search/ask`
+**接口地址**: `POST /search/ask`
 
 **请求头**:
 ```

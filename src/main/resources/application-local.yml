@@ -15,6 +15,11 @@ spring:
       ddl-auto: update
     show-sql: true
     database-platform: org.hibernate.dialect.MySQL8Dialect
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
 
 server:
   port: 8080
@@ -48,11 +53,6 @@ retrieval:
   top-k: 10
   score-threshold: 0.7
 
-logging:
-  level:
-    com.aliyun.rag: DEBUG
-    dev.langchain4j: INFO
-
 management:
   endpoints:
     web:
@@ -61,6 +61,10 @@ management:
   endpoint:
     health:
       show-details: always
+
+
+
+
 
 # 七牛云配置
 qiniu:

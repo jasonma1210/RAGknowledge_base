@@ -28,14 +28,14 @@ import java.util.regex.Pattern;
  * 支持多种文档格式（PDF、DOCX、TXT、Markdown、EPUB）的内容提取
  * 采用智能分块策略，支持重叠分块以提高检索准确性
  * </p>
- * 
+ *
  * @author Jason Ma
  * @version 1.0.0
  * @since 2025-09-09
  */
 @Service
 public class DocumentProcessor {
-    
+
     private static final Logger log = LoggerFactory.getLogger(DocumentProcessor.class);
 
     private static final int CHUNK_SIZE = 1000;
@@ -49,15 +49,15 @@ public class DocumentProcessor {
         try {
             String fileName = file.getOriginalFilename();
             String fileExtension = getFileExtension(fileName);
-            
+
             String content = extractContent(file, fileExtension);
-            
+
             documentInfo.setFileName(fileName);
             documentInfo.setFileType(fileExtension.toUpperCase());
             documentInfo.setFileSize(file.getSize());
-            
+
             return content;
-            
+
         } catch (Exception e) {
             log.error("文档处理失败: {}", e.getMessage(), e);
             throw new RuntimeException("文档处理失败: " + e.getMessage(), e);
@@ -125,7 +125,7 @@ public class DocumentProcessor {
      */
     private String extractEpubContent(MultipartFile file) throws Exception {
         StringBuilder content = new StringBuilder();
-        
+
         try (ZipInputStream zip = new ZipInputStream(file.getInputStream())) {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
@@ -136,7 +136,7 @@ public class DocumentProcessor {
                 zip.closeEntry();
             }
         }
-        
+
         return content.toString();
     }
 
@@ -161,9 +161,9 @@ public class DocumentProcessor {
         // 简单的分块策略：按段落和句子分割
         String[] paragraphs = text.split("\n\n");
         java.util.List<String> chunks = new java.util.ArrayList<>();
-        
+
         StringBuilder currentChunk = new StringBuilder();
-        
+
         for (String paragraph : paragraphs) {
             if (currentChunk.length() + paragraph.length() <= CHUNK_SIZE) {
                 currentChunk.append(paragraph).append("\n\n");
@@ -171,7 +171,7 @@ public class DocumentProcessor {
                 if (!currentChunk.isEmpty()) {
                     chunks.add(currentChunk.toString().trim());
                     currentChunk = new StringBuilder();
-                    
+
                     // 添加重叠部分
                     if (paragraph.length() > CHUNK_OVERLAP) {
                         currentChunk.append(paragraph, 0, CHUNK_OVERLAP);
@@ -194,11 +194,11 @@ public class DocumentProcessor {
                 }
             }
         }
-        
+
         if (!currentChunk.isEmpty()) {
             chunks.add(currentChunk.toString().trim());
         }
-        
+
         return chunks.toArray(new String[0]);
     }
 }

@@ -1,9 +1,10 @@
 package com.aliyun.rag;
 
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 /**
  * RAG知识库系统启动类
@@ -20,6 +21,7 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
         SecurityAutoConfiguration.class,
         ManagementWebSecurityAutoConfiguration.class
 })
+@EnableTransactionManagement
 public class KnowledgeBaseApplication {
     
     public static void main(String[] args) {

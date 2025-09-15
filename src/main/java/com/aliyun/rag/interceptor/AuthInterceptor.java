@@ -48,7 +48,8 @@ public class AuthInterceptor implements HandlerInterceptor {
             response.getWriter().write("{\"success\":false,\"message\":\"无效的访问令牌\"}");
             return false;
         }
-        
+
+        System.out.println("111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111");
         // 将用户信息存储到请求属性中
         request.setAttribute("currentUser", user);
         return true;

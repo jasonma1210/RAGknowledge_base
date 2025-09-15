@@ -21,27 +21,27 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * 提供用户注册、登录、认证等服务
  * </p>
- * 
+ *
  * @author Jason Ma
  * @version 1.0.0
  * @since 2025-09-10
  */
 @Service
 public class AuthService {
-    
+
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
-    
+
     // 简化的令牌存储，实际项目中应该使用Redis等
     private static final Map<String, Long> TOKEN_USER_MAP = new ConcurrentHashMap<>();
-    
+
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-    
+
     public AuthService(UserRepository userRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
-    
+
     /**
      * 用户注册
      */
@@ -55,7 +55,7 @@ public class AuthService {
                 response.setMessage("用户名已存在");
                 return response;
             }
-            
+
             // 创建新用户
             User user = new User();
             user.setUsername(request.getUsername());
@@ -67,19 +67,19 @@ public class AuthService {
             user.setGmtCreate(LocalDateTime.now());
             user.setGmtModified(LocalDateTime.now());
             user.setIsDeleted(0); // 未删除
-            
+
             // 保存用户到数据库
             User savedUser = userRepository.save(user);
-            
+
             // 返回认证信息
             AuthResponse response = new AuthResponse();
             response.setSuccess(true);
             response.setUser(savedUser);
             response.setMessage("注册成功");
-            
+
             log.info("用户注册成功: {}", savedUser.getUsername());
             return response;
-            
+
         } catch (Exception e) {
             log.error("用户注册失败: {}", e.getMessage(), e);
             AuthResponse response = new AuthResponse();
@@ -88,7 +88,7 @@ public class AuthService {
             return response;
         }
     }
-    
+
     /**
      * 用户登录
      */
@@ -102,7 +102,7 @@ public class AuthService {
                 response.setMessage("用户名或密码错误");
                 return response;
             }
-            
+
             User user = optionalUser.get();
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 AuthResponse response = new AuthResponse();
@@ -110,28 +110,28 @@ public class AuthService {
                 response.setMessage("用户名或密码错误");
                 return response;
             }
-            
+
             // 更新最后登录时间
             user.setLastLoginTime(LocalDateTime.now());
             user.setGmtModified(LocalDateTime.now());
             userRepository.save(user);
-            
+
             // 生成访问令牌
             String token = UUID.randomUUID().toString();
-            
+
             // 将令牌与用户ID关联存储
             TOKEN_USER_MAP.put(token, user.getId());
-            
+
             // 返回认证信息
             AuthResponse response = new AuthResponse();
             response.setSuccess(true);
             response.setToken(token);
             response.setUser(user);
             response.setMessage("登录成功");
-            
+
             log.info("用户登录成功: {}", user.getUsername());
             return response;
-            
+
         } catch (Exception e) {
             log.error("用户登录失败: {}", e.getMessage(), e);
             AuthResponse response = new AuthResponse();
@@ -140,7 +140,7 @@ public class AuthService {
             return response;
         }
     }
-    
+
     /**
      * 验证访问令牌
      */
@@ -150,11 +150,11 @@ public class AuthService {
         if (userId == null) {
             return null;
         }
-        
+
         // 根据用户ID查找用户
         return getUserById(userId);
     }
-    
+
     /**
      * 根据用户ID获取用户信息
      */
@@ -162,11 +162,56 @@ public class AuthService {
         Optional<User> optionalUser = userRepository.findById(userId);
         return optionalUser.orElse(null);
     }
-    
+
     /**
      * 用户登出
      */
     public void logout(String token) {
         TOKEN_USER_MAP.remove(token);
+    }
+    
+    /**
+     * 修改用户密码
+     *
+     * @param user 当前用户
+     * @param oldPassword 原密码
+     * @param newPassword 新密码
+     * @return AuthResponse
+     */
+    public AuthResponse changePassword(User user, String oldPassword, String newPassword) {
+        try {
+            // 验证原密码是否正确
+            if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+                AuthResponse response = new AuthResponse();
+                response.setSuccess(false);
+                response.setMessage("原密码错误");
+                return response;
+            }
+            
+            // 检查新密码是否与原密码相同
+            if (passwordEncoder.matches(newPassword, user.getPassword())) {
+                AuthResponse response = new AuthResponse();
+                response.setSuccess(false);
+                response.setMessage("新密码不能与原密码相同");
+                return response;
+            }
+            
+            // 更新用户密码
+            user.setPassword(passwordEncoder.encode(newPassword));
+            user.setGmtModified(LocalDateTime.now());
+            userRepository.save(user);
+            
+            AuthResponse response = new AuthResponse();
+            response.setSuccess(true);
+            response.setMessage("密码修改成功");
+            return response;
+            
+        } catch (Exception e) {
+            log.error("修改密码失败: {}", e.getMessage(), e);
+            AuthResponse response = new AuthResponse();
+            response.setSuccess(false);
+            response.setMessage("修改密码失败: " + e.getMessage());
+            return response;
+        }
     }
 }

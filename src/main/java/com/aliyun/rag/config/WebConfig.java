@@ -28,7 +28,8 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 注册认证拦截器，拦截所有API请求（除了认证相关接口）
         registry.addInterceptor(authInterceptor)
-                .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/**");
+                .addPathPatterns("/**")
+                .excludePathPatterns("/auth/**")
+                .excludePathPatterns("/", "/index.html", "/static/**", "/assets/**");
     }
 }
