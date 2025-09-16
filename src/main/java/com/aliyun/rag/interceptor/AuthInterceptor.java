@@ -2,6 +2,7 @@ package com.aliyun.rag.interceptor;
 
 import com.aliyun.rag.model.User;
 import com.aliyun.rag.service.AuthService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -19,6 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * @since 2025-09-10
  */
 @Component
+@Slf4j
 public class AuthInterceptor implements HandlerInterceptor {
     
     private final AuthService authService;
@@ -49,7 +51,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        System.out.println("111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111");
+        log.debug("用户认证成功: {}", user.getUsername());
         // 将用户信息存储到请求属性中
         request.setAttribute("currentUser", user);
         return true;

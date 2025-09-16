@@ -8,6 +8,7 @@ import com.aliyun.rag.model.User;
 import com.aliyun.rag.service.AuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,8 +27,10 @@ import jakarta.validation.Valid;
  */
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = "*")
 public class AuthController {
+    
+    @Value("${cors.allowed.origins:*}")
+    private String allowedOrigins;
     
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     

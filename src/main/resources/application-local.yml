@@ -20,6 +20,18 @@ spring:
       mode: always
       schema-locations: classpath:db/schema.sql
       data-locations: classpath:db/data.sql
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    password: 
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
 
 server:
   port: 8080
@@ -61,10 +73,6 @@ management:
   endpoint:
     health:
       show-details: always
-
-
-
-
 
 # 七牛云配置
 qiniu:

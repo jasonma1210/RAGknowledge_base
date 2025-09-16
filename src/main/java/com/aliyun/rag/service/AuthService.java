@@ -7,14 +7,15 @@ import com.aliyun.rag.model.AuthResponse;
 import com.aliyun.rag.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 用户认证服务
@@ -31,11 +32,14 @@ public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
-    // 简化的令牌存储，实际项目中应该使用Redis等
-    private static final Map<String, Long> TOKEN_USER_MAP = new ConcurrentHashMap<>();
+    // 令牌过期时间（小时）
+    private static final int TOKEN_EXPIRE_HOURS = 24;
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     public AuthService(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -119,8 +123,8 @@ public class AuthService {
             // 生成访问令牌
             String token = UUID.randomUUID().toString();
 
-            // 将令牌与用户ID关联存储
-            TOKEN_USER_MAP.put(token, user.getId());
+            // 将令牌与用户ID关联存储到Redis中
+            redisTemplate.opsForValue().set(token, user.getId(), TOKEN_EXPIRE_HOURS, TimeUnit.HOURS);
 
             // 返回认证信息
             AuthResponse response = new AuthResponse();
@@ -145,14 +149,14 @@ public class AuthService {
      * 验证访问令牌
      */
     public User validateToken(String token) {
-        // 从令牌映射中查找用户ID
-        Long userId = TOKEN_USER_MAP.get(token);
-        if (userId == null) {
+        // 从Redis中查找用户ID
+        Object userIdObj = redisTemplate.opsForValue().get(token);
+        if (userIdObj == null) {
             return null;
         }
 
         // 根据用户ID查找用户
-        return getUserById(userId);
+        return getUserById((Long) userIdObj);
     }
 
     /**
@@ -167,7 +171,7 @@ public class AuthService {
      * 用户登出
      */
     public void logout(String token) {
-        TOKEN_USER_MAP.remove(token);
+        redisTemplate.delete(token);
     }
     
     /**

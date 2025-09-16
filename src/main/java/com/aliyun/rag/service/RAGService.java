@@ -14,6 +14,9 @@ import dev.langchain4j.model.chat.ChatModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -306,21 +309,12 @@ public class RAGService {
      */
     public PageResult<DocumentInfo> getDocuments(User user, int page, int size) {
         try {
-            // 从数据库获取用户的所有文件记录
-            List<UserFileRecord> allUserFileRecords = userFileRecordRepository.findByUserIdAndIsDeleted(user.getId(), 0);
-
-            // 分页处理
-            int total = allUserFileRecords.size();
-            int start = page * size;
-            int end = Math.min(start + size, total);
-
-            List<UserFileRecord> pagedUserFileRecords = new ArrayList<>();
-            if (start < total) {
-                pagedUserFileRecords = allUserFileRecords.subList(start, end);
-            }
+            // 使用数据库分页查询获取用户的文件记录
+            Pageable pageable = PageRequest.of(page, size);
+            Page<UserFileRecord> userFileRecordPage = userFileRecordRepository.findByUserIdAndIsDeleted(user.getId(), 0, pageable);
 
             // 转换为DocumentInfo列表
-            List<DocumentInfo> documentInfos = pagedUserFileRecords.stream().map(record -> {
+            List<DocumentInfo> documentInfos = userFileRecordPage.getContent().stream().map(record -> {
                 DocumentInfo documentInfo = new DocumentInfo();
                 documentInfo.setId(record.getId().toString()); // 使用数据库记录ID
                 documentInfo.setTitle(record.getFileName());
@@ -331,7 +325,8 @@ public class RAGService {
                 return documentInfo;
             }).collect(Collectors.toList());
 
-            PageResult<DocumentInfo> pageResult = new PageResult<>(documentInfos, page, size, total);
+            PageResult<DocumentInfo> pageResult = new PageResult<>(documentInfos, page, size, userFileRecordPage.getTotalElements());
+            pageResult.setTotalPages(userFileRecordPage.getTotalPages());
 
             return pageResult;
         } catch (Exception e) {

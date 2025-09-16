@@ -10,6 +10,7 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,8 +39,12 @@ public class DocumentProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentProcessor.class);
 
-    private static final int CHUNK_SIZE = 1000;
-    private static final int CHUNK_OVERLAP = 200;
+    @Value("${document.chunk.size:1000}")
+    private int CHUNK_SIZE;
+
+    @Value("${document.chunk.overlap:200}")
+    private int CHUNK_OVERLAP;
+
     private static final Pattern EPUB_PATTERN = Pattern.compile(".*\\.epub$", Pattern.CASE_INSENSITIVE);
 
     /**

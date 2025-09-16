@@ -16,6 +16,8 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 文档管理控制器
@@ -53,7 +55,7 @@ public class DocumentController {
         try {
             // 获取当前用户
             User currentUser = (User)httpRequest.getAttribute("currentUser");
-            System.out.println("当前用户: " + currentUser);
+            log.info("当前用户: {}", currentUser);
             
             // 先上传文件到七牛云
             String fileUrl = qiniuUploadService.uploadFile(request.getFile(), currentUser);
@@ -79,7 +81,10 @@ public class DocumentController {
             }
         } catch (Exception e) {
             log.error("文档上传失败", e);
-            return ResponseEntity.badRequest().body("文档上传失败: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "文档上传失败",
+                "message", e.getMessage()
+            ));
         }
     }
     
@@ -91,7 +96,7 @@ public class DocumentController {
         try {
             // 获取当前用户
             User currentUser = (User)httpRequest.getAttribute("currentUser");
-            System.out.println("当前用户: " + currentUser);
+            log.info("当前用户: {}", currentUser);
             
             // 在主线程中读取文件内容，避免在异步线程中访问已销毁的MultipartFile对象
             byte[] fileBytes = request.getFile().getBytes();
@@ -101,8 +106,8 @@ public class DocumentController {
             // 创建一个包装类来保存文件信息
             FileInfo fileInfo = new FileInfo(fileBytes, originalFilename, contentType);
             
-            // 启动异步处理线程
-            new Thread(() -> {
+            // 使用线程池执行异步处理
+            CompletableFuture.runAsync(() -> {
                 try {
                     // 创建一个临时的MultipartFile对象
                     MultipartFile tempFile = new InMemoryMultipartFile(fileInfo.getBytes(), fileInfo.getOriginalFilename(), fileInfo.getContentType());
@@ -124,13 +129,18 @@ public class DocumentController {
                 } catch (Exception e) {
                     log.error("异步文档上传到七牛云失败", e);
                 }
-            }).start();
+            });
             
             // 立即返回响应，表示已接收上传请求
-            return ResponseEntity.ok("文件上传请求已接收，正在后台处理中...");
+            return ResponseEntity.ok(Map.of(
+                "message", "文件上传请求已接收，正在后台处理中..."
+            ));
         } catch (Exception e) {
             log.error("文档上传请求处理失败", e);
-            return ResponseEntity.badRequest().body("文档上传请求处理失败: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "文档上传请求处理失败",
+                "message", e.getMessage()
+            ));
         }
     }
 
@@ -138,7 +148,7 @@ public class DocumentController {
      * 分页获取文档列表
      */
     @GetMapping
-    public ResponseEntity<PageResult<DocumentInfo>> getDocuments(
+    public ResponseEntity<?> getDocuments(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             HttpServletRequest httpRequest) {
@@ -150,7 +160,10 @@ public class DocumentController {
             return ResponseEntity.ok(pageResult);
         } catch (Exception e) {
             log.error("获取文档列表失败", e);
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.internalServerError().body(Map.of(
+                "error", "获取文档列表失败",
+                "message", e.getMessage()
+            ));
         }
     }
 
@@ -167,11 +180,14 @@ public class DocumentController {
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("删除文档失败", e);
-            return ResponseEntity.badRequest().body("删除文档失败: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "删除文档失败",
+                "message", e.getMessage()
+            ));
         }
     }
     
-    /**
+        /**
      * 下载文档
      */
     @GetMapping("/{documentId}/download")
@@ -202,7 +218,10 @@ public class DocumentController {
                     .body(fileData);
         } catch (Exception e) {
             log.error("下载文档失败", e);
-            return ResponseEntity.badRequest().body("下载文档失败: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "下载文档失败",
+                "message", e.getMessage()
+            ));
         }
     }
 }
