@@ -26,7 +26,7 @@
                 <el-icon size="24" color="var(--color-primary)"><DataLine /></el-icon>
               </div>
               <div class="stat-info">
-                <div class="stat-value">{{ stats.totalVectors || 0 }}</div>
+                <div class="stat-value">{{ stats.totalCount || 0 }}</div>
                 <div class="stat-label">总向量数</div>
               </div>
             </div>
@@ -37,19 +37,8 @@
                 <el-icon size="24" color="var(--color-success)"><Document /></el-icon>
               </div>
               <div class="stat-info">
-                <div class="stat-value">{{ stats.totalDocuments || 0 }}</div>
+                <div class="stat-value">{{ stats.fileCount || 0 }}</div>
                 <div class="stat-label">总文档数</div>
-              </div>
-            </div>
-          </el-col>
-          <el-col :span="6">
-            <div class="stat-item">
-              <div class="stat-icon">
-                <el-icon size="24" color="var(--color-warning)"><Histogram /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ stats.avgVectorsPerDocument?.toFixed(1) || 0 }}</div>
-                <div class="stat-label">平均每文档向量数</div>
               </div>
             </div>
           </el-col>
@@ -59,27 +48,32 @@
                 <el-icon size="24" color="var(--color-danger)"><Grid /></el-icon>
               </div>
               <div class="stat-info">
-                <div class="stat-value">{{ stats.vectorDimension || 0 }}</div>
+                <div class="stat-value">{{ stats.dimension || 0 }}</div>
                 <div class="stat-label">向量维度</div>
+              </div>
+            </div>
+          </el-col>
+          <el-col :span="6">
+            <div class="stat-item">
+              <div class="stat-icon">
+                <el-icon size="24" color="var(--color-warning)"><Histogram /></el-icon>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ stats.storageSize || '-' }}</div>
+                <div class="stat-label">存储大小</div>
               </div>
             </div>
           </el-col>
         </el-row>
         
         <el-row :gutter="20" style="margin-top: 20px;">
-          <el-col :span="8">
+          <el-col :span="12">
             <div class="stat-item horizontal">
               <div class="stat-label">集合名称</div>
               <div class="stat-value">{{ stats.collectionName || '-' }}</div>
             </div>
           </el-col>
-          <el-col :span="8">
-            <div class="stat-item horizontal">
-              <div class="stat-label">存储大小</div>
-              <div class="stat-value">{{ stats.storageSize || '-' }}</div>
-            </div>
-          </el-col>
-          <el-col :span="8">
+          <el-col :span="12">
             <div class="stat-item horizontal">
               <div class="stat-label">最后更新</div>
               <div class="stat-value">{{ formatTime(stats.lastUpdated) || '-' }}</div>
@@ -116,30 +110,15 @@
             <span class="vector-id">{{ scope.row.id }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="documentId" label="文档ID" min-width="150" show-overflow-tooltip>
+        <el-table-column prop="chunkIndex" label="分块ID" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="displayText" label="内容" min-width="300">
           <template #default="scope">
-            <el-tag size="small" type="primary">{{ scope.row.documentId }}</el-tag>
+            <div class="content-preview">{{ truncateContent(scope.row.displayText) }}</div>
           </template>
         </el-table-column>
-        <el-table-column prop="chunkId" label="分块ID" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="vectorDimension" label="向量维度" width="120" align="center">
+        <el-table-column prop="createTime" label="创建时间" width="180">
           <template #default="scope">
-            <el-tag size="small">{{ scope.row.vectorDimension }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="score" label="分数" width="100" align="center">
-          <template #default="scope">
-            <span class="score-value">{{ scope.row.score }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createdTime" label="创建时间" width="180">
-          <template #default="scope">
-            {{ formatTime(scope.row.createdTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="内容" min-width="200">
-          <template #default="scope">
-            <div class="content-preview">{{ truncateContent(scope.row.content) }}</div>
+            {{ formatTime(scope.row.createTime) }}
           </template>
         </el-table-column>
       </el-table>
@@ -178,13 +157,12 @@ const dataLoading = ref(false)
 
 // 统计信息
 const stats = ref({
-  totalVectors: 0,
-  totalDocuments: 0,
-  avgVectorsPerDocument: 0,
-  vectorDimension: 0,
+  totalCount: 0,
+  dimension: 0,
+  fileCount: 0,
   collectionName: '',
-  storageSize: '',
-  lastUpdated: ''
+  lastUpdated: '',
+  storageSize: ''
 })
 
 // 向量数据列表
@@ -394,11 +372,6 @@ onMounted(() => {
 .vector-id {
   color: var(--color-primary);
   font-weight: 500;
-}
-
-.score-value {
-  font-weight: 600;
-  color: var(--color-success);
 }
 
 .content-preview {
