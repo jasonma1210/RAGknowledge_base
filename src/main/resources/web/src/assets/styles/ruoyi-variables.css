@@ -1,0 +1,150 @@
+/* RuoYi风格主题变量 */
+:root {
+  /* 主色调 - RuoYi蓝 */
+  --el-color-primary: #409EFF;
+  --el-color-primary-light-3: #3375b9;
+  --el-color-primary-light-5: #2a598a;
+  --el-color-primary-light-7: #213d5b;
+  --el-color-primary-light-9: #18212c;
+  --el-color-primary-dark-2: #337ecc;
+  
+  /* 成功色 */
+  --el-color-success: #67C23A;
+  --el-color-success-light-3: #529b2e;
+  --el-color-success-light-5: #427a24;
+  --el-color-success-light-7: #32591a;
+  --el-color-success-light-9: #223810;
+  --el-color-success-dark-2: #5d9e43;
+  
+  /* 警告色 */
+  --el-color-warning: #E6A23C;
+  --el-color-warning-light-3: #b88230;
+  --el-color-warning-light-5: #956829;
+  --el-color-warning-light-7: #724e22;
+  --el-color-warning-light-9: #4f341b;
+  --el-color-warning-dark-2: #cd8c42;
+  
+  /* 危险色 */
+  --el-color-danger: #F56C6C;
+  --el-color-danger-light-3: #c45656;
+  --el-color-danger-light-5: #9f4545;
+  --el-color-danger-light-7: #7a3535;
+  --el-color-danger-light-9: #552424;
+  --el-color-danger-dark-2: #dd6161;
+  
+  /* 信息色 */
+  --el-color-info: #909399;
+  --el-color-info-light-3: #73767a;
+  --el-color-info-light-5: #5c5f63;
+  --el-color-info-light-7: #45474c;
+  --el-color-info-light-9: #2e3035;
+  --el-color-info-dark-2: #82848a;
+  
+  /* 中性色 */
+  --el-color-white: #FFFFFF;
+  --el-color-black: #000000;
+  --el-color-gray-1: #f5f7fa;     /* 背景色 */
+  --el-color-gray-2: #f0f2f5;     /* 侧边栏背景色 */
+  --el-color-gray-3: #e1e4e8;     /* 边框色 */
+  --el-color-gray-4: #cfd1d4;     /* 次要边框色 */
+  --el-color-gray-5: #aeb1b5;     /* 禁用文本色 */
+  --el-color-gray-6: #8f9296;     /* 次要文本色 */
+  --el-color-gray-7: #606266;     /* 主要文本色 */
+  --el-color-gray-8: #303133;     /* 标题文本色 */
+  --el-color-gray-9: #1a1a1a;     /* 主标题文本色 */
+  
+  /* 背景色 */
+  --el-bg-color: #f0f2f5;
+  --el-bg-color-page: #f0f2f5;
+  --el-bg-color-overlay: #FFFFFF;
+  --el-bg-color-base: #f5f7fa;
+  
+  /* 文本颜色 */
+  --el-text-color-primary: #303133;
+  --el-text-color-regular: #606266;
+  --el-text-color-secondary: #909399;
+  --el-text-color-placeholder: #a8abb2;
+  --el-text-color-disabled: #c0c4cc;
+  
+  /* 边框颜色 */
+  --el-border-color: #dcdfe6;
+  --el-border-color-light: #e4e7ed;
+  --el-border-color-lighter: #ebeef5;
+  --el-border-color-extra-light: #f2f6fc;
+  --el-border-color-dark: #d4d7de;
+  --el-border-color-darker: #cdd0d6;
+  
+  /* 填充颜色 */
+  --el-fill-color: #f0f2f5;
+  --el-fill-color-light: #f5f7fa;
+  --el-fill-color-lighter: #fafafa;
+  --el-fill-color-extra-light: #fafcff;
+  --el-fill-color-dark: #ebedf0;
+  --el-fill-color-darker: #e6e8eb;
+  --el-fill-color-blank: #ffffff;
+  
+  /* 阴影 */
+  --el-box-shadow: 0 12px 32px 4px rgba(0, 0, 0, .04), 0 8px 20px rgba(0, 0, 0, .08);
+  --el-box-shadow-light: 0 0 12px rgba(0, 0, 0, .12);
+  --el-box-shadow-lighter: 0 0 6px rgba(0, 0, 0, .12);
+  --el-box-shadow-dark: 0 16px 48px 16px rgba(0, 0, 0, .08), 0 12px 32px rgba(0, 0, 0, .12), 0 8px 16px -8px rgba(0, 0, 0, .16);
+  
+  /* 圆角 */
+  --el-border-radius-base: 4px;
+  --el-border-radius-small: 2px;
+  --el-border-radius-round: 20px;
+  --el-border-radius-circle: 100%;
+  
+  /* 间距 */
+  --el-spacing-1: 4px;
+  --el-spacing-2: 8px;
+  --el-spacing-3: 12px;
+  --el-spacing-4: 16px;
+  --el-spacing-5: 20px;
+  --el-spacing-6: 24px;
+  --el-spacing-7: 28px;
+  --el-spacing-8: 32px;
+  --el-spacing-9: 36px;
+  --el-spacing-10: 40px;
+  
+  /* 字体 */
+  --el-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  
+  /* 字体大小 */
+  --el-font-size-extra-large: 20px;
+  --el-font-size-large: 18px;
+  --el-font-size-medium: 16px;
+  --el-font-size-base: 14px;
+  --el-font-size-small: 13px;
+  --el-font-size-extra-small: 12px;
+  
+  /* 字体粗细 */
+  --el-font-weight-primary: 500;
+  --el-font-weight-secondary: 100;
+  
+  /* 行高 */
+  --el-line-height: 1.5;
+  
+  /* Z-index */
+  --el-index-normal: 1;
+  --el-index-top: 1000;
+  --el-index-popper: 2000;
+  
+  /* 侧边栏 */
+  --sidebar-bg-color: #001529;
+  --sidebar-text-color: #ffffff;
+  --sidebar-text-color-active: #ffffff;
+  --sidebar-menu-bg-color: #000c17;
+  --sidebar-menu-hover-bg-color: #1890ff;
+  --sidebar-width: 220px;
+  --sidebar-collapsed-width: 64px;
+  
+  /* 顶部导航栏 */
+  --header-bg-color: #ffffff;
+  --header-height: 50px;
+  --header-box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  
+  /* 过渡动画 */
+  --el-transition-duration: 0.3s;
+  --el-transition-function-ease-in-out-bezier: cubic-bezier(0.645, 0.045, 0.355, 1);
+}

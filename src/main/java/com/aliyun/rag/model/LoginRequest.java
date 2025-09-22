@@ -1,8 +1,6 @@
 package com.aliyun.rag.model;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * 用户登录请求
@@ -19,11 +17,13 @@ public class LoginRequest {
     /**
      * 用户名
      */
+    @JsonProperty("username")
     private String username;
 
     /**
      * 密码
      */
+    @JsonProperty("password")
     private String password;
 
     // Getters and Setters

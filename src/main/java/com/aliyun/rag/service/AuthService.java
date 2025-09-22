@@ -1,49 +1,52 @@
 package com.aliyun.rag.service;
 
+import com.aliyun.rag.exception.BusinessException;
 import com.aliyun.rag.model.User;
 import com.aliyun.rag.model.LoginRequest;
 import com.aliyun.rag.model.RegisterRequest;
 import com.aliyun.rag.model.AuthResponse;
+import com.aliyun.rag.model.ErrorCode;
+import com.aliyun.rag.model.dto.UserDTO;
 import com.aliyun.rag.repository.UserRepository;
+import com.aliyun.rag.util.SensitiveDataMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
  * 用户认证服务
  * <p>
  * 提供用户注册、登录、认证等服务
+ * 使用JWT Token替代传统的UUID Token
  * </p>
  *
  * @author Jason Ma
  * @version 1.0.0
- * @since 2025-09-10
+ * @since 2025-01-18
  */
 @Service
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
-    // 令牌过期时间（小时）
-    private static final int TOKEN_EXPIRE_HOURS = 24;
-
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-    
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final JwtTokenService jwtTokenService;
 
-    public AuthService(UserRepository userRepository) {
+    public AuthService(UserRepository userRepository, 
+                      RedisTemplate<String, Object> redisTemplate,
+                      JwtTokenService jwtTokenService) {
         this.userRepository = userRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
+        this.redisTemplate = redisTemplate;
+        this.jwtTokenService = jwtTokenService;
     }
 
     /**
@@ -54,10 +57,7 @@ public class AuthService {
             // 检查用户名是否已存在
             Optional<User> existingUser = userRepository.findByUsernameAndIsDeleted(request.getUsername(), 0);
             if (existingUser.isPresent()) {
-                AuthResponse response = new AuthResponse();
-                response.setSuccess(false);
-                response.setMessage("用户名已存在");
-                return response;
+                return AuthResponse.failure(ErrorCode.USER_ALREADY_EXISTS);
             }
 
             // 创建新用户
@@ -76,20 +76,15 @@ public class AuthService {
             User savedUser = userRepository.save(user);
 
             // 返回认证信息
-            AuthResponse response = new AuthResponse();
-            response.setSuccess(true);
-            response.setUser(savedUser);
-            response.setMessage("注册成功");
+            UserDTO userDTO = UserDTO.fromUser(savedUser);
+            AuthResponse response = AuthResponse.success(null, userDTO, "注册成功");
 
             log.info("用户注册成功: {}", savedUser.getUsername());
             return response;
 
         } catch (Exception e) {
             log.error("用户注册失败: {}", e.getMessage(), e);
-            AuthResponse response = new AuthResponse();
-            response.setSuccess(false);
-            response.setMessage("注册失败: " + e.getMessage());
-            return response;
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败");
         }
     }
 
@@ -101,18 +96,12 @@ public class AuthService {
             // 查找用户
             Optional<User> optionalUser = userRepository.findByUsernameAndIsDeleted(request.getUsername(), 0);
             if (optionalUser.isEmpty()) {
-                AuthResponse response = new AuthResponse();
-                response.setSuccess(false);
-                response.setMessage("用户名或密码错误");
-                return response;
+                return AuthResponse.failure(ErrorCode.AUTH_FAILED);
             }
 
             User user = optionalUser.get();
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                AuthResponse response = new AuthResponse();
-                response.setSuccess(false);
-                response.setMessage("用户名或密码错误");
-                return response;
+                return AuthResponse.failure(ErrorCode.AUTH_FAILED);
             }
 
             // 更新最后登录时间
@@ -120,43 +109,49 @@ public class AuthService {
             user.setGmtModified(LocalDateTime.now());
             userRepository.save(user);
 
-            // 生成访问令牌
-            String token = UUID.randomUUID().toString();
+            // 生成JWT访问令牌
+            String accessToken = jwtTokenService.generateAccessToken(user);
+            String refreshToken = jwtTokenService.generateRefreshToken(user);
 
-            // 将令牌与用户ID关联存储到Redis中
-            redisTemplate.opsForValue().set(token, user.getId(), TOKEN_EXPIRE_HOURS, TimeUnit.HOURS);
+            // 将refresh token存储到Redis中
+            String refreshTokenKey = "refresh_token:" + user.getId();
+            redisTemplate.opsForValue().set(refreshTokenKey, refreshToken, 7, TimeUnit.DAYS);
 
             // 返回认证信息
-            AuthResponse response = new AuthResponse();
-            response.setSuccess(true);
-            response.setToken(token);
-            response.setUser(user);
-            response.setMessage("登录成功");
+            UserDTO userDTO = UserDTO.fromUser(user);
+            AuthResponse response = AuthResponse.success(accessToken, userDTO, "登录成功");
 
             log.info("用户登录成功: {}", user.getUsername());
             return response;
 
         } catch (Exception e) {
             log.error("用户登录失败: {}", e.getMessage(), e);
-            AuthResponse response = new AuthResponse();
-            response.setSuccess(false);
-            response.setMessage("登录失败: " + e.getMessage());
-            return response;
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "登录失败");
         }
     }
 
     /**
-     * 验证访问令牌
+     * 验证JWT访问令牌
      */
     public User validateToken(String token) {
-        // 从Redis中查找用户ID
-        Object userIdObj = redisTemplate.opsForValue().get(token);
-        if (userIdObj == null) {
+        try {
+            // 验证JWT Token有效性
+            if (!jwtTokenService.validateToken(token)) {
+                return null;
+            }
+
+            // 从令牌中获取用户ID
+            Long userId = jwtTokenService.getUserIdFromToken(token);
+            if (userId == null) {
+                return null;
+            }
+
+            // 根据用户ID查找用户
+            return getUserById(userId);
+        } catch (Exception e) {
+            log.error("验证Token失败: {}", e.getMessage());
             return null;
         }
-
-        // 根据用户ID查找用户
-        return getUserById((Long) userIdObj);
     }
 
     /**
@@ -170,8 +165,76 @@ public class AuthService {
     /**
      * 用户登出
      */
-    public void logout(String token) {
-        redisTemplate.delete(token);
+    public AuthResponse logout(String token) {
+        try {
+            // 从令牌中获取用户ID
+            Long userId = jwtTokenService.getUserIdFromToken(token);
+            if (userId != null) {
+                // 删除Redis中的refresh token
+                String refreshTokenKey = "refresh_token:" + userId;
+                redisTemplate.delete(refreshTokenKey);
+                log.info("用户 {} 登出成功", userId);
+            }
+            return AuthResponse.success(null, null, "登出成功");
+        } catch (Exception e) {
+            log.error("用户登出失败: {}", e.getMessage(), e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "登出失败");
+        }
+    }
+    
+    /**
+     * 获取用户信息(基于Token)
+     */
+    public User getProfile(String token) {
+        if (token == null || token.isEmpty()) {
+            throw new BusinessException(ErrorCode.TOKEN_MISSING);
+        }
+        
+        User user = validateToken(token);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+        
+        return user;
+    }
+    
+    /**
+     * 修改用户密码(基于Token)
+     */
+    public AuthResponse changePassword(String token, String oldPassword, String newPassword) {
+        if (token == null || token.isEmpty()) {
+            throw new BusinessException(ErrorCode.TOKEN_MISSING);
+        }
+        
+        User user = validateToken(token);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+        
+        return changeUserPassword(user, oldPassword, newPassword);
+    }
+    
+    /**
+     * 修改用户密码(基于User对象)
+     */
+    public AuthResponse changePassword(User user, String oldPassword, String newPassword) {
+        return changeUserPassword(user, oldPassword, newPassword);
+    }
+    
+    /**
+     * 用户登出(基于User对象)
+     */
+    public AuthResponse logout(User user) {
+        try {
+            // 删除Redis中的refresh token
+            String refreshTokenKey = "refresh_token:" + user.getId();
+            redisTemplate.delete(refreshTokenKey);
+            log.info("用户 {} 登出成功", user.getUsername());
+            return AuthResponse.success(null, null, "登出成功");
+        } catch (Exception e) {
+            log.error("用户登出失败: {}", e.getMessage(), e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "登出失败");
+        }
     }
     
     /**
@@ -182,22 +245,16 @@ public class AuthService {
      * @param newPassword 新密码
      * @return AuthResponse
      */
-    public AuthResponse changePassword(User user, String oldPassword, String newPassword) {
+    private AuthResponse changeUserPassword(User user, String oldPassword, String newPassword) {
         try {
             // 验证原密码是否正确
             if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
-                AuthResponse response = new AuthResponse();
-                response.setSuccess(false);
-                response.setMessage("原密码错误");
-                return response;
+                return AuthResponse.failure(ErrorCode.PASSWORD_INCORRECT);
             }
             
             // 检查新密码是否与原密码相同
             if (passwordEncoder.matches(newPassword, user.getPassword())) {
-                AuthResponse response = new AuthResponse();
-                response.setSuccess(false);
-                response.setMessage("新密码不能与原密码相同");
-                return response;
+                return AuthResponse.failure(ErrorCode.PASSWORD_SAME);
             }
             
             // 更新用户密码
@@ -205,17 +262,11 @@ public class AuthService {
             user.setGmtModified(LocalDateTime.now());
             userRepository.save(user);
             
-            AuthResponse response = new AuthResponse();
-            response.setSuccess(true);
-            response.setMessage("密码修改成功");
-            return response;
+            return AuthResponse.success(null, null, "密码修改成功");
             
         } catch (Exception e) {
             log.error("修改密码失败: {}", e.getMessage(), e);
-            AuthResponse response = new AuthResponse();
-            response.setSuccess(false);
-            response.setMessage("修改密码失败: " + e.getMessage());
-            return response;
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "修改密码失败");
         }
     }
 }

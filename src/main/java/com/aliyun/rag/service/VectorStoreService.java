@@ -27,6 +27,9 @@ import io.milvus.response.QueryResultsWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -49,7 +52,6 @@ public class VectorStoreService {
     private final DocumentMilvusMappingRepository documentMilvusMappingRepository;
     private final MilvusConfig milvusConfig;
 
-    @Autowired
     public VectorStoreService(EmbeddingModel embeddingModel,
                               DocumentMilvusMappingRepository documentMilvusMappingRepository,
                               MilvusConfig milvusConfig) {
@@ -146,8 +148,8 @@ public class VectorStoreService {
                         Metadata.from(
                                 Map.of(
                                         "fileRecordId", fileRecordId.toString(),
-                                        "title", documentInfo.getTitle() != null ? documentInfo.getTitle() : documentInfo.getFileName(),
-                                        "fileType", documentInfo.getFileType(),
+                                        "title", (documentInfo != null) ? String.valueOf(documentInfo) : "Unknown",
+                                        "fileType", "Unknown",
                                         "chunkIndex", String.valueOf(i),
                                         "tags", documentInfo.getTags() != null ? documentInfo.getTags() : ""
                                 )
@@ -356,6 +358,12 @@ public class VectorStoreService {
      * @param userId 用户ID
      * @param username 用户名
      */
+    @Caching(evict = {
+        @CacheEvict(value = "documentMappings", key = "#fileRecordId"),
+        @CacheEvict(value = "userVectorStats", key = "#userId + '_' + #username"),
+        @CacheEvict(value = "vectorCount", key = "#userId + '_' + #username"),
+        @CacheEvict(value = "userMappings", key = "#userId")
+    })
     public void deleteDocument(Long fileRecordId, Long userId, String username) {
         try {
             log.info("用户 {}({}) 正在删除文档向量: {}", username, userId, fileRecordId);
@@ -364,7 +372,7 @@ public class VectorStoreService {
             MilvusEmbeddingStore userEmbeddingStore = getUserEmbeddingStore(userId, username);
 
             // 查找并删除数据库中的映射关系
-            List<DocumentMilvusMapping> mappings = documentMilvusMappingRepository.findByFileRecordIdAndIsDeleted(fileRecordId, 0);
+            List<DocumentMilvusMapping> mappings = getDocumentMappingsFromCache(fileRecordId);
 
             // 删除Milvus中的向量数据
             int deletedCount = 0;
@@ -446,6 +454,7 @@ public class VectorStoreService {
      * @param user 用户对象
      * @return 向量总数
      */
+    @Cacheable(value = "vectorCount", key = "#user.id + '_' + #user.username")
     public long getVectorCount(User user) {
         try {
             log.info("用户 {}({}) 正在获取向量总数", user.getUsername(), user.getId());
@@ -605,6 +614,7 @@ public class VectorStoreService {
      * @param username 用户名
      * @return 向量统计信息
      */
+    @Cacheable(value = "userVectorStats", key = "#userId + '_' + #username")
     public Map<String, Object> getUserVectorStats(Long userId, String username) {
         try {
             log.info("用户 {}({}) 正在获取向量统计信息", username, userId);
@@ -646,7 +656,7 @@ public class VectorStoreService {
             long totalCount = wrapper.getRowCount();
 
             // 获取文件数量
-            List<DocumentMilvusMapping> mappings = documentMilvusMappingRepository.findByUserIdAndIsDeleted(userId, 0);
+            List<DocumentMilvusMapping> mappings = getUserMappingsFromCache(userId);
             long fileCount = mappings.stream()
                     .map(DocumentMilvusMapping::getFileRecordId)
                     .distinct()
@@ -669,5 +679,27 @@ public class VectorStoreService {
             log.error("用户 {}({}) 获取向量统计信息失败: {}", username, userId, e.getMessage(), e);
             throw new RuntimeException("获取向量统计信息失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 从缓存中获取文档映射关系
+     *
+     * @param fileRecordId 文件记录ID
+     * @return 映射关系列表
+     */
+    @Cacheable(value = "documentMappings", key = "#fileRecordId")
+    public List<DocumentMilvusMapping> getDocumentMappingsFromCache(Long fileRecordId) {
+        return documentMilvusMappingRepository.findByFileRecordIdAndIsDeleted(fileRecordId, 0);
+    }
+
+    /**
+     * 从缓存中获取用户映射关系
+     *
+     * @param userId 用户ID
+     * @return 映射关系列表
+     */
+    @Cacheable(value = "userMappings", key = "#userId")
+    public List<DocumentMilvusMapping> getUserMappingsFromCache(Long userId) {
+        return documentMilvusMappingRepository.findByUserIdAndIsDeleted(userId, 0);
     }
 }

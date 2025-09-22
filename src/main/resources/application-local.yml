@@ -5,6 +5,8 @@ spring:
     multipart:
       max-file-size: 100MB
       max-request-size: 100MB
+      # 启用文件大小异常处理
+      resolve-lazily: true
   datasource:
     url: jdbc:mysql://localhost:3306/rag_knowledge_base?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
@@ -20,21 +22,22 @@ spring:
       mode: always
       schema-locations: classpath:db/schema.sql
       data-locations: classpath:db/data.sql
-  redis:
-    host: localhost
-    port: 6379
-    database: 0
-    password: 
-    timeout: 2000ms
-    lettuce:
-      pool:
-        max-active: 8
-        max-wait: -1ms
-        max-idle: 8
-        min-idle: 0
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      password: 
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
 
 server:
-  port: 8080
+  port: 8082
 
 milvus:
   host: localhost
@@ -59,11 +62,49 @@ document:
   chunk:
     size: 1000
     overlap: 200
-  supported-formats: pdf,docx,txt,md,epub
+  supported-formats:
+    - pdf
+    - docx
+    - txt
+    - md
+    - epub
+
+# 用户等级配置
+user:
+  levels:
+    basic:
+      code: 0
+      quota: 5368709120  # 5GB
+    advanced:
+      code: 1
+      quota: 107374182400  # 100GB
 
 retrieval:
   top-k: 10
   score-threshold: 0.7
+
+# 文件上传配置
+file:
+  upload:
+    # 最大文件大小（100MB）
+    max-file-size: 104857600
+    # 大文件阈值（50MB）
+    large-file-threshold: 52428800
+    # 支持的文件类型
+    allowed-types:
+      - pdf
+      - docx
+      - txt
+      - md
+      - epub
+    # 文件处理缓冲区大小（8KB）
+    buffer-size: 8192
+    # 是否启用文件类型检查
+    enable-type-validation: true
+    # 是否启用文件大小检查
+    enable-size-validation: true
+    # 文件处理超时时间（秒）
+    processing-timeout-seconds: 300
 
 management:
   endpoints:
@@ -80,3 +121,22 @@ qiniu:
   secret-key:  ${your secretkey}
   bucket: ${your bucket}
   domain: ${your domain}
+
+# JWT配置
+jwt:
+  secret: ${JWT_SECRET:RAGKnowledgeBaseDefaultSecretKeyForJWTTokenGenerationAndValidation2025}
+  expiration: 86400000  # 24小时
+  refresh-expiration: 604800000  # 7天
+  token-prefix: "Bearer "
+  header-name: "Authorization"
+  issuer: "RAG-Knowledge-Base"
+
+# CORS跨域配置
+cors:
+  # 生产环境需要配置具体的前端域名，不能使用通配符
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://localhost:5175}
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: Content-Type,Authorization,X-Requested-With,Accept,Origin
+  exposed-headers: Content-Length,Content-Range
+  allow-credentials: true
+  max-age: 3600  # 1小时

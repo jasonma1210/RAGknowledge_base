@@ -1,70 +1,145 @@
-# Getting Started with Create React App
+# RAG知识库系统前端
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+基于Vue3 + Element Plus的现代化知识库管理系统前端
 
-## Available Scripts
+## 项目结构
 
-In the project directory, you can run:
+```
+src/
+├── assets/           # 静态资源文件
+├── components/       # 公共组件
+├── layouts/          # 布局组件
+├── router/           # 路由配置
+├── services/         # API服务层
+├── stores/           # 状态管理
+├── views/            # 页面视图
+├── App.vue           # 根组件
+└── main.ts           # 入口文件
+```
 
-### `npm start`
+## 技术栈
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Vue 3** - 渐进式JavaScript框架
+- **TypeScript** - JavaScript的超集，提供类型安全
+- **Element Plus** - Vue 3的桌面端组件库
+- **Vue Router** - Vue.js的官方路由管理器
+- **Axios** - 基于Promise的HTTP客户端
+- **Vite** - 新一代前端构建工具
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 功能模块
 
-### `npm test`
+### 1. 认证模块
+- 用户登录/注册
+- JWT Token管理
+- 用户信息获取
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 2. 文档管理
+- 文档上传/下载
+- 文档列表查看
+- 文档删除
 
-### `npm run build`
+### 3. 知识搜索
+- 语义搜索
+- 关键词搜索
+- 混合搜索
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 4. AI问答
+- 智能问答系统
+- 答案置信度显示
+- 参考来源展示
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 5. 向量数据管理
+- 向量数据统计
+- 向量数据列表查看
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 6. 系统监控
+- 系统健康状态检查
+- 系统指标监控
+- 系统信息查看
 
-### `npm run eject`
+## 开发指南
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### 环境要求
+- Node.js >= 16.0.0
+- npm >= 7.0.0
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 安装依赖
+```bash
+npm install
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 启动开发服务器
+```bash
+npm run dev
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### 构建生产版本
+```bash
+npm run build
+```
 
-## Learn More
+### 类型检查
+```bash
+npm run type-check
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## API接口
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+所有API接口通过`/src/services/api.ts`统一管理，包含以下模块：
 
-### Code Splitting
+- `authAPI` - 认证相关接口
+- `documentAPI` - 文档管理接口
+- `searchAPI` - 搜索相关接口
+- `vectorDataAPI` - 向量数据接口
+- `systemAPI` - 系统监控接口
+- `healthAPI` - 健康检查接口
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 路由配置
 
-### Analyzing the Bundle Size
+路由配置位于`/src/router/index.ts`，包含以下路径：
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- `/login` - 登录页面
+- `/` - 默认布局，包含以下子路由：
+  - `/dashboard` - 仪表板
+  - `/documents` - 文档管理
+  - `/search` - 知识搜索
+  - `/ask` - AI问答
+  - `/vector-data` - 向量数据
+  - `/system-monitor` - 系统监控
 
-### Making a Progressive Web App
+## 代理配置
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+为了处理跨域问题，Vite配置了代理：
 
-### Advanced Configuration
+```javascript
+server: {
+  proxy: {
+    '/api': {
+      target: 'http://localhost:8080',
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/api/, '')
+    },
+    '/actuator': {
+      target: 'http://localhost:8080',
+      changeOrigin: true
+    }
+  }
+}
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## 开发规范
 
-### Deployment
+1. 使用TypeScript进行类型检查
+2. 遵循Vue 3 Composition API规范
+3. 组件命名使用PascalCase
+4. 文件命名使用kebab-case
+5. API调用统一使用services层
+6. 状态管理使用Pinia（如需要）
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## 注意事项
 
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+1. 启动前端服务前请确保后端服务已启动
+2. 默认后端地址为`http://localhost:8080`
+3. 前端开发服务器地址为`http://localhost:5173`
+4. 登录后Token会自动保存到localStorage
+5. 401错误会自动跳转到登录页

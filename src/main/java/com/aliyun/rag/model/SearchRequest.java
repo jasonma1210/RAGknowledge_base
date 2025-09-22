@@ -1,7 +1,6 @@
 package com.aliyun.rag.model;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
 
 /**
  * 搜索请求模型
@@ -14,7 +13,6 @@ import lombok.Data;
  * @version 1.0.0
  * @since 2025-09-09
  */
-@Data
 public class SearchRequest {
 
     @NotNull(message = "搜索内容不能为空")
@@ -32,4 +30,36 @@ public class SearchRequest {
         HYBRID       // 混合搜索
     }
 
+    // Getters and Setters
+    public String getQuery() {
+        return query;
+    }
+
+    public void setQuery(String query) {
+        this.query = query;
+    }
+
+    public SearchType getSearchType() {
+        return searchType;
+    }
+
+    public void setSearchType(SearchType searchType) {
+        this.searchType = searchType;
+    }
+
+    public Integer getMaxResults() {
+        return maxResults;
+    }
+
+    public void setMaxResults(Integer maxResults) {
+        this.maxResults = maxResults;
+    }
+
+    public Double getMinScore() {
+        return minScore;
+    }
+
+    public void setMinScore(Double minScore) {
+        this.minScore = minScore;
+    }
 }

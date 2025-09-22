@@ -1,7 +1,5 @@
 package com.aliyun.rag.model;
 
-import lombok.Data;
-
 /**
  * 向量数据模型
  * <p>
@@ -12,7 +10,6 @@ import lombok.Data;
  * @version 1.0.0
  * @since 2025-09-15
  */
-@Data
 public class VectorData {
     
     /**
@@ -59,4 +56,77 @@ public class VectorData {
      * 创建时间
      */
     private String createTime;
+
+    // Getters and Setters
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+
+    public String getDisplayText() {
+        return displayText;
+    }
+
+    public void setDisplayText(String displayText) {
+        this.displayText = displayText;
+    }
+
+    public String getFileRecordId() {
+        return fileRecordId;
+    }
+
+    public void setFileRecordId(String fileRecordId) {
+        this.fileRecordId = fileRecordId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getFileType() {
+        return fileType;
+    }
+
+    public void setFileType(String fileType) {
+        this.fileType = fileType;
+    }
+
+    public Integer getChunkIndex() {
+        return chunkIndex;
+    }
+
+    public void setChunkIndex(Integer chunkIndex) {
+        this.chunkIndex = chunkIndex;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
+    public String getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(String createTime) {
+        this.createTime = createTime;
+    }
 }

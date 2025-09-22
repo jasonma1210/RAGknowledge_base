@@ -1,6 +1,5 @@
 package com.aliyun.rag.model;
 
-import lombok.Data;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -14,7 +13,6 @@ import java.time.LocalDateTime;
  * @version 1.0.0
  * @since 2025-09-11
  */
-@Data
 @Entity
 @Table(name = "document_milvus_mapping")
 public class DocumentMilvusMapping {
@@ -67,4 +65,69 @@ public class DocumentMilvusMapping {
      */
     @Column(name = "is_deleted", nullable = false)
     private Integer isDeleted;
+
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getFileRecordId() {
+        return fileRecordId;
+    }
+
+    public void setFileRecordId(Long fileRecordId) {
+        this.fileRecordId = fileRecordId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public String getMilvusId() {
+        return milvusId;
+    }
+
+    public void setMilvusId(String milvusId) {
+        this.milvusId = milvusId;
+    }
+
+    public Integer getVectorIndex() {
+        return vectorIndex;
+    }
+
+    public void setVectorIndex(Integer vectorIndex) {
+        this.vectorIndex = vectorIndex;
+    }
+
+    public LocalDateTime getGmtCreate() {
+        return gmtCreate;
+    }
+
+    public void setGmtCreate(LocalDateTime gmtCreate) {
+        this.gmtCreate = gmtCreate;
+    }
+
+    public LocalDateTime getGmtModified() {
+        return gmtModified;
+    }
+
+    public void setGmtModified(LocalDateTime gmtModified) {
+        this.gmtModified = gmtModified;
+    }
+
+    public Integer getIsDeleted() {
+        return isDeleted;
+    }
+
+    public void setIsDeleted(Integer isDeleted) {
+        this.isDeleted = isDeleted;
+    }
 }

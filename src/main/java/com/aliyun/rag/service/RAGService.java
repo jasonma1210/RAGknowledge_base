@@ -2,6 +2,7 @@ package com.aliyun.rag.service;
 
 import com.aliyun.rag.model.DocumentInfo;
 import com.aliyun.rag.model.DocumentRequest;
+import com.aliyun.rag.model.DocumentProcessResult;
 import com.aliyun.rag.model.PageResult;
 import com.aliyun.rag.model.SearchRequest;
 import com.aliyun.rag.model.SearchResult;
@@ -11,6 +12,12 @@ import com.aliyun.rag.repository.UserFileRecordRepository;
 import com.aliyun.rag.repository.UserRepository;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +56,7 @@ public class RAGService {
     private final EmbeddingService embeddingService;
     private final VectorStoreService vectorStoreService;
     private final ChatModel qwenChatModel;
+    private final StreamingChatModel qwenStreamingChatModel;
     private final UserFileRecordRepository userFileRecordRepository;
     private final UserRepository userRepository;
     private final QiniuUploadService qiniuUploadService;
@@ -58,6 +66,7 @@ public class RAGService {
                       EmbeddingService embeddingService,
                       VectorStoreService vectorStoreService,
                       ChatModel qwenChatModel,
+                      StreamingChatModel qwenStreamingChatModel,
                       UserFileRecordRepository userFileRecordRepository,
                       UserRepository userRepository,
                       QiniuUploadService qiniuUploadService,
@@ -66,6 +75,7 @@ public class RAGService {
         this.embeddingService = embeddingService;
         this.vectorStoreService = vectorStoreService;
         this.qwenChatModel = qwenChatModel;
+        this.qwenStreamingChatModel = qwenStreamingChatModel;
         this.userFileRecordRepository = userFileRecordRepository;
         this.userRepository = userRepository;
         this.qiniuUploadService = qiniuUploadService;
@@ -74,17 +84,36 @@ public class RAGService {
 
     /**
      * 上传并处理文档
+     * <p>
+     * 先处理文件（不在事务中），再执行数据库操作（事务中）
+     * </p>
      */
-    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public DocumentInfo uploadDocument(DocumentRequest request, User user, String fileUrl) {
         try {
             MultipartFile file = request.getFile();
-
-            // 检查用户存储容量是否足够
+            
+            // 1. 预处理检查（非事务操作）
             if (!checkStorageQuota(user, file.getSize())) {
                 throw new RuntimeException("存储空间不足，请联系管理员");
             }
-
+            
+            // 2. 处理文档内容（非事务操作）
+            DocumentProcessResult processResult = processDocumentFile(request, file, fileUrl);
+            
+            // 3. 执行数据库操作（事务中）
+            return saveDocumentInfo(processResult, user, file);
+            
+        } catch (Exception e) {
+            log.error("文档上传失败: {}", e.getMessage(), e);
+            throw new RuntimeException("文档上传失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 处理文档文件（非事务操作）
+     */
+    private DocumentProcessResult processDocumentFile(DocumentRequest request, MultipartFile file, String fileUrl) {
+        try {
             // 创建文档信息
             DocumentInfo documentInfo = new DocumentInfo();
             String documentId = UUID.randomUUID().toString();
@@ -93,17 +122,38 @@ public class RAGService {
             documentInfo.setDescription(request.getDescription());
             documentInfo.setTags(request.getTags());
             documentInfo.setUploadTime(LocalDateTime.now());
-
-            // 处理文档
+            
+            // 处理文档内容
             String content = documentProcessor.processDocument(file, documentInfo);
-
+            
             // 分块
             String[] chunks = documentProcessor.chunkText(content);
             documentInfo.setChunkCount(chunks.length);
-
+            
             // 生成嵌入向量
             List<Embedding> embeddings = embeddingService.embedTextChunks(chunks);
-
+            
+            log.info("文档处理完成: {}, 分块数量: {}", documentId, chunks.length);
+            
+            return new DocumentProcessResult(documentInfo, chunks, embeddings, fileUrl);
+            
+        } catch (Exception e) {
+            log.error("文档处理失败: {}", e.getMessage(), e);
+            throw new RuntimeException("文档处理失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 保存文档信息到数据库（事务操作）
+     */
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    private DocumentInfo saveDocumentInfo(DocumentProcessResult processResult, User user, MultipartFile file) {
+        try {
+            DocumentInfo documentInfo = processResult.getDocumentInfo();
+            String[] chunks = processResult.getChunks();
+            List<Embedding> embeddings = processResult.getEmbeddings();
+            String fileUrl = processResult.getFileUrl();
+            
             // 保存用户文件记录到数据库
             UserFileRecord userFileRecord = new UserFileRecord();
             userFileRecord.setUserId(user.getId());
@@ -115,26 +165,22 @@ public class RAGService {
             userFileRecord.setGmtCreate(LocalDateTime.now());
             userFileRecord.setGmtModified(LocalDateTime.now());
             userFileRecord.setIsDeleted(0);
-
+            
             userFileRecordRepository.save(userFileRecord);
-
+            
             // 更新用户存储容量
             updateUserStorageAfterUpload(user, file.getSize());
-
+            
             // 存储到向量数据库（使用数据库记录ID、用户ID和用户名）
             vectorStoreService.storeDocument(userFileRecord.getId(), user.getId(), user.getUsername(), chunks, embeddings, documentInfo);
-
-            log.info("文档上传成功: {}, 分块数量: {}", documentId, chunks.length);
-
+            
+            log.info("文档保存成功: {}, 分块数量: {}", documentInfo.getId(), chunks.length);
+            
             return documentInfo;
-
+            
         } catch (Exception e) {
-            log.error("文档上传失败: {}", e.getMessage(), e);
-            // 如果是事务回滚异常，重新抛出以触发事务回滚
-            if (e instanceof org.springframework.transaction.TransactionSystemException) {
-                throw e;
-            }
-            throw new RuntimeException("文档上传失败: " + e.getMessage(), e);
+            log.error("文档保存失败: {}", e.getMessage(), e);
+            throw e; // 重新抛出以触发事务回滚
         }
     }
 
@@ -305,6 +351,74 @@ public class RAGService {
     }
 
     /**
+     * 流式问答接口
+     */
+    public void askQuestionStreaming(String question, SearchRequest searchRequest, User user, dev.langchain4j.model.StreamingResponseHandler<AiMessage> handler) {
+        try {
+            // 搜索相关知识
+            List<SearchResult> searchResults = searchKnowledgeBase(searchRequest, user);
+
+            // 构建上下文
+            StringBuilder context = new StringBuilder();
+            for (SearchResult result : searchResults) {
+                context.append("【").append(result.getTitle()).append("】")
+                        .append(result.getContent()).append("\n\n");
+            }
+
+            // 构建提示词
+            String prompt = String.format(
+                    """
+                    基于以下知识库内容，请回答用户的问题：
+                    
+                    知识库内容：
+                    %s
+                    
+                    用户问题：%s
+                    
+                    请提供准确、简洁的回答，并引用相关的知识库内容。
+                    """,
+                    context,
+                    question
+            );
+
+            // 使用流式模型生成回答
+            log.info("开始流式生成回答: {}", question);
+            
+            // 使用流式处理方式
+            qwenStreamingChatModel.chat(prompt, new dev.langchain4j.model.chat.response.StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String token) {
+                    handler.onNext(token);
+                }
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
+                    handler.onComplete(new Response<>(response.aiMessage()));
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    handler.onError(throwable);
+                }
+            });
+
+        } catch (Exception e) {
+            log.error("流式问答失败: {}", e.getMessage(), e);
+            handler.onError(e);
+        }
+    }
+
+    /**
+     * 流式响应处理器接口
+     */
+    public interface StreamingResponseHandler {
+        void onStart();
+        void onNext(String token);
+        void onComplete(List<SearchResult> sources);
+        void onError(Throwable throwable);
+    }
+
+    /**
      * 分页获取文档列表
      */
     public PageResult<DocumentInfo> getDocuments(User user, int page, int size) {
@@ -332,6 +446,38 @@ public class RAGService {
         } catch (Exception e) {
             log.error("获取文档列表失败: {}", e.getMessage(), e);
             throw new RuntimeException("获取文档列表失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 搜索文档列表（支持模糊匹配）
+     */
+    public PageResult<DocumentInfo> searchDocuments(User user, String keyword, int page, int size) {
+        try {
+            // 使用数据库分页查询获取用户的文件记录，支持模糊匹配
+            Pageable pageable = PageRequest.of(page, size);
+            Page<UserFileRecord> userFileRecordPage = userFileRecordRepository.findByUserIdAndFileNameContainingAndIsDeleted(
+                    user.getId(), keyword, 0, pageable);
+
+            // 转换为DocumentInfo列表
+            List<DocumentInfo> documentInfos = userFileRecordPage.getContent().stream().map(record -> {
+                DocumentInfo documentInfo = new DocumentInfo();
+                documentInfo.setId(record.getId().toString()); // 使用数据库记录ID
+                documentInfo.setTitle(record.getFileName());
+                documentInfo.setFileName(record.getFilePath());
+                documentInfo.setFileSize(record.getFileSize());
+                documentInfo.setFileType(record.getFileType());
+                documentInfo.setUploadTime(record.getUploadTime());
+                return documentInfo;
+            }).collect(Collectors.toList());
+
+            PageResult<DocumentInfo> pageResult = new PageResult<>(documentInfos, page, size, userFileRecordPage.getTotalElements());
+            pageResult.setTotalPages(userFileRecordPage.getTotalPages());
+
+            return pageResult;
+        } catch (Exception e) {
+            log.error("搜索文档列表失败: {}", e.getMessage(), e);
+            throw new RuntimeException("搜索文档列表失败: " + e.getMessage(), e);
         }
     }
 

@@ -1,7 +1,5 @@
 package com.aliyun.rag.model;
 
-import lombok.Data;
-
 /**
  * 修改密码请求
  * <p>
@@ -10,9 +8,8 @@ import lombok.Data;
  *
  * @author Jason Ma
  * @version 1.0.0
- * @since 2025-09-15
+ * @since 2025-09-10
  */
-@Data
 public class ChangePasswordRequest {
 
     /**
@@ -25,4 +22,20 @@ public class ChangePasswordRequest {
      */
     private String newPassword;
 
+    // Getters and Setters
+    public String getOldPassword() {
+        return oldPassword;
+    }
+
+    public void setOldPassword(String oldPassword) {
+        this.oldPassword = oldPassword;
+    }
+
+    public String getNewPassword() {
+        return newPassword;
+    }
+
+    public void setNewPassword(String newPassword) {
+        this.newPassword = newPassword;
+    }
 }

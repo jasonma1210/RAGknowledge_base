@@ -1,18 +1,17 @@
 package com.aliyun.rag.model;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import com.aliyun.rag.model.dto.UserDTO;
 
 /**
  * 认证响应
  * <p>
  * 用于用户认证接口的响应结果
+ * 使用UserDTO替代User实体，避免敏感信息泄露
  * </p>
  *
  * @author Jason Ma
  * @version 1.0.0
- * @since 2025-09-10
+ * @since 2025-01-18
  */
 public class AuthResponse {
 
@@ -22,9 +21,14 @@ public class AuthResponse {
     private String token;
 
     /**
-     * 用户信息
+     * 刷新令牌（可选）
      */
-    private User user;
+    private String refreshToken;
+
+    /**
+     * 用户信息（不包含敏感字段）
+     */
+    private UserDTO user;
 
     /**
      * 是否成功
@@ -32,9 +36,65 @@ public class AuthResponse {
     private boolean success;
 
     /**
-     * 错误信息
+     * 消息或错误信息
      */
     private String message;
+
+    /**
+     * 错误码（可选）
+     */
+    private Integer errorCode;
+
+    /**
+     * 时间戳
+     */
+    private Long timestamp;
+
+    public AuthResponse() {
+        this.timestamp = System.currentTimeMillis();
+    }
+
+    /**
+     * 创建成功响应
+     *
+     * @param token 访问令牌
+     * @param user 用户信息
+     * @param message 消息
+     * @return AuthResponse
+     */
+    public static AuthResponse success(String token, UserDTO user, String message) {
+        AuthResponse response = new AuthResponse();
+        response.setSuccess(true);
+        response.setToken(token);
+        response.setUser(user);
+        response.setMessage(message);
+        return response;
+    }
+
+    /**
+     * 创建失败响应
+     *
+     * @param errorCode 错误码
+     * @param message 错误信息
+     * @return AuthResponse
+     */
+    public static AuthResponse failure(ErrorCode errorCode, String message) {
+        AuthResponse response = new AuthResponse();
+        response.setSuccess(false);
+        response.setErrorCode(errorCode.getCode());
+        response.setMessage(message != null ? message : errorCode.getMessage());
+        return response;
+    }
+
+    /**
+     * 创建失败响应
+     *
+     * @param errorCode 错误码
+     * @return AuthResponse
+     */
+    public static AuthResponse failure(ErrorCode errorCode) {
+        return failure(errorCode, null);
+    }
 
     // Getters and Setters
     public String getToken() {
@@ -45,11 +105,19 @@ public class AuthResponse {
         this.token = token;
     }
 
-    public User getUser() {
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
+    public UserDTO getUser() {
         return user;
     }
 
-    public void setUser(User user) {
+    public void setUser(UserDTO user) {
         this.user = user;
     }
 
@@ -67,5 +135,21 @@ public class AuthResponse {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public Integer getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(Integer errorCode) {
+        this.errorCode = errorCode;
+    }
+
+    public Long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Long timestamp) {
+        this.timestamp = timestamp;
     }
 }

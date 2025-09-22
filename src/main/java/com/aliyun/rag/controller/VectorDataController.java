@@ -3,6 +3,8 @@ package com.aliyun.rag.controller;
 import com.aliyun.rag.model.PageResult;
 import com.aliyun.rag.model.User;
 import com.aliyun.rag.model.VectorData;
+import com.aliyun.rag.model.R;
+import com.aliyun.rag.model.dto.UserDTO;
 import com.aliyun.rag.service.AuthService;
 import com.aliyun.rag.service.VectorStoreService;
 import org.slf4j.Logger;
@@ -43,41 +45,34 @@ public class VectorDataController {
      * 分页获取用户的向量集合列表
      */
     @GetMapping
-    public ResponseEntity<PageResult<VectorData>> getUserVectors(
+    public ResponseEntity<R<PageResult<VectorData>>> getUserVectors(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             HttpServletRequest httpRequest) {
-        try {
-            // 获取当前用户
-            User currentUser = (User) httpRequest.getAttribute("currentUser");
+        // 获取当前用户
+        User currentUser = (User) httpRequest.getAttribute("currentUser");
 
-            // 获取用户的向量集合列表
-            PageResult<VectorData> pageResult = vectorStoreService.getUserVectors(
-                    currentUser.getId(), currentUser.getUsername(), page, size);
+        // 获取用户的向量集合列表
+        PageResult<VectorData> pageResult = vectorStoreService.getUserVectors(
+                currentUser.getId(), currentUser.getUsername(), page, size);
 
-            return ResponseEntity.ok(pageResult);
-        } catch (Exception e) {
-            log.error("获取用户向量集合列表失败", e);
-            return ResponseEntity.internalServerError().build();
-        }
+        return ResponseEntity.ok(R.success(pageResult));
     }
 
     /**
      * 获取用户的向量统计信息
      */
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getUserVectorStats(HttpServletRequest httpRequest) {
-        try {
-            // 获取当前用户
-            User currentUser = (User) httpRequest.getAttribute("currentUser");
+    public ResponseEntity<R<Map<String, Object>>> getUserVectorStats(HttpServletRequest httpRequest) {
+        // 获取当前用户
+        User currentUser = (User) httpRequest.getAttribute("currentUser");
 
-            // 获取用户的向量统计信息
-            Map<String, Object> stats = vectorStoreService.getUserVectorStats(
-                    currentUser.getId(), currentUser.getUsername());
-            return ResponseEntity.ok(stats);
-        } catch (Exception e) {
-            log.error("获取用户向量统计信息失败", e);
-            return ResponseEntity.internalServerError().build();
-        }
+        // 转换为UserDTO以避免敏感信息泄露
+        UserDTO currentUserDTO = UserDTO.fromUser(currentUser);
+
+        // 获取用户的向量统计信息
+        Map<String, Object> stats = vectorStoreService.getUserVectorStats(
+                currentUserDTO.getId(), currentUserDTO.getUsername());
+        return ResponseEntity.ok(R.success(stats));
     }
 }

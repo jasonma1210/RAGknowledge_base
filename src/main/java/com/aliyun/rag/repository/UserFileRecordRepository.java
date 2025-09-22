@@ -42,6 +42,17 @@ public interface UserFileRecordRepository extends JpaRepository<UserFileRecord, 
     Page<UserFileRecord> findByUserIdAndIsDeleted(Long userId, Integer isDeleted, Pageable pageable);
 
     /**
+     * 根据用户ID和文件名模糊匹配查找未删除的文件记录（分页）
+     *
+     * @param userId 用户ID
+     * @param fileName 文件名（模糊匹配）
+     * @param isDeleted 是否删除
+     * @param pageable 分页参数
+     * @return 文件记录分页结果
+     */
+    Page<UserFileRecord> findByUserIdAndFileNameContainingAndIsDeleted(Long userId, String fileName, Integer isDeleted, Pageable pageable);
+
+    /**
      * 根据用户ID和文件名查找未删除的文件记录
      *
      * @param userId 用户ID

@@ -1,7 +1,5 @@
 package com.aliyun.rag.controller;
 
-import lombok.Data;
-
 /**
  * 文件信息包装类
  * <p>
@@ -12,7 +10,6 @@ import lombok.Data;
  * @version 1.0.0
  * @since 2025-09-15
  */
-@Data
 public class FileInfo {
     private byte[] bytes;
     private String originalFilename;
@@ -21,6 +18,31 @@ public class FileInfo {
     public FileInfo(byte[] bytes, String originalFilename, String contentType) {
         this.bytes = bytes;
         this.originalFilename = originalFilename;
+        this.contentType = contentType;
+    }
+
+    // Getters and Setters
+    public byte[] getBytes() {
+        return bytes;
+    }
+
+    public void setBytes(byte[] bytes) {
+        this.bytes = bytes;
+    }
+
+    public String getOriginalFilename() {
+        return originalFilename;
+    }
+
+    public void setOriginalFilename(String originalFilename) {
+        this.originalFilename = originalFilename;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public void setContentType(String contentType) {
         this.contentType = contentType;
     }
 }

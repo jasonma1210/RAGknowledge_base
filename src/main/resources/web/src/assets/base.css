@@ -1,0 +1,262 @@
+/* RuoYi风格主题变量 */
+@import './styles/ruoyi-variables.css';
+
+/* 重置样式 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  font-weight: normal;
+}
+
+/* 基础元素样式 */
+body {
+  min-height: 100vh;
+  color: var(--el-text-color-primary);
+  background-color: var(--el-bg-color-page);
+  transition: background-color var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier);
+  line-height: var(--el-line-height);
+  font-family: var(--el-font-family);
+  font-size: var(--el-font-size-base);
+  font-weight: var(--el-font-weight-primary);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 响应式图片 */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 链接样式 */
+a {
+  color: var(--el-color-primary);
+  text-decoration: none;
+  transition: color var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier);
+  outline: none;
+}
+
+a:hover {
+  color: var(--el-color-primary-light-3);
+}
+
+a:active {
+  color: var(--el-color-primary-dark-2);
+}
+
+a:focus {
+  text-decoration: underline;
+  text-decoration-color: var(--el-color-primary);
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--el-fill-color-light);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--el-border-color-light);
+  border-radius: var(--el-border-radius-small);
+  transition: background var(--el-transition-duration);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--el-border-color);
+}
+
+/* 焦点样式 */
+:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 1px;
+}
+
+/* 通用卡片样式 */
+.card {
+  background-color: var(--el-bg-color-overlay);
+  border-radius: var(--el-border-radius-base);
+  box-shadow: var(--el-box-shadow-light);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: box-shadow var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier);
+}
+
+.card:hover {
+  box-shadow: var(--el-box-shadow-lighter);
+}
+
+/* 通用按钮样式 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--el-border-radius-base);
+  font-weight: var(--el-font-weight-primary);
+  transition: all var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier);
+  cursor: pointer;
+  border: 1px solid transparent;
+  padding: var(--el-spacing-2) var(--el-spacing-4);
+  font-size: var(--el-font-size-base);
+  line-height: 1.5;
+  height: 32px;
+  position: relative;
+  white-space: nowrap;
+  text-align: center;
+  background-image: none;
+  background-color: transparent;
+  outline: none;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* 主要按钮 */
+.btn-primary {
+  background-color: var(--el-color-primary);
+  color: var(--el-color-white);
+  border-color: var(--el-color-primary);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.045);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--el-color-primary-light-3);
+  border-color: var(--el-color-primary-light-3);
+}
+
+.btn-primary:active:not(:disabled) {
+  background-color: var(--el-color-primary-dark-2);
+  border-color: var(--el-color-primary-dark-2);
+  box-shadow: none;
+}
+
+.btn-primary:focus:not(:disabled) {
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+/* 容器样式 */
+.container {
+  width: 100%;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: var(--el-spacing-4);
+  padding-left: var(--el-spacing-4);
+}
+
+@media (min-width: 576px) {
+  .container {
+    max-width: 540px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+  }
+}
+
+@media (min-width: 992px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1140px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .container {
+    max-width: 1500px;
+  }
+}
+
+/* 网格系统 */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: calc(var(--el-spacing-4) * -1);
+  margin-left: calc(var(--el-spacing-4) * -1);
+}
+
+.col {
+  flex: 1 0 0%;
+  padding-right: var(--el-spacing-4);
+  padding-left: var(--el-spacing-4);
+}
+
+/* 响应式工具类 */
+.hidden {
+  display: none !important;
+}
+
+@media (min-width: 576px) {
+  .hidden-sm-up {
+    display: none !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .hidden-xs-down {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .hidden-md-up {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .hidden-sm-down {
+    display: none !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .hidden-lg-up {
+    display: none !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .hidden-md-down {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .hidden-xl-up {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1199.98px) {
+  .hidden-lg-down {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1600px) {
+  .hidden-xxl-up {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1599.98px) {
+  .hidden-xl-down {
+    display: none !important;
+  }
+}

@@ -1,7 +1,9 @@
 package com.aliyun.rag.controller;
 
+import com.aliyun.rag.model.R;
 import com.aliyun.rag.model.SystemInfo;
 import com.aliyun.rag.model.User;
+import com.aliyun.rag.model.dto.UserDTO;
 import com.aliyun.rag.service.RAGService;
 import com.aliyun.rag.service.VectorStoreService;
 import org.slf4j.Logger;
@@ -12,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
-//import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
 import oshi.hardware.HardwareAbstractionLayer;
@@ -56,26 +57,29 @@ public class SystemController {
      * 获取系统信息和用户统计信息
      */
     @GetMapping("/dashboard")
-    public ResponseEntity<?> getDashboardInfo(HttpServletRequest httpRequest) {
+    public ResponseEntity<R<Map<String, Object>>> getDashboardInfo(HttpServletRequest httpRequest) {
         try {
             // 获取当前用户
             User currentUser = (User) httpRequest.getAttribute("currentUser");
+            
+            // 转换为UserDTO以避免敏感信息泄露
+            UserDTO currentUserDTO = UserDTO.fromUser(currentUser);
             
             // 获取系统信息
             SystemInfo systemInfo = getSystemInfo();
             
             // 获取用户文件统计信息
-            Map<String, Object> userStats = getUserStats(currentUser);
+            Map<String, Object> userStats = getUserStats(currentUserDTO);
             
             // 封装返回结果
             Map<String, Object> result = new HashMap<>();
             result.put("systemInfo", systemInfo);
             result.put("userStats", userStats);
             
-            return ResponseEntity.ok(result);
+            return ResponseEntity.ok(R.success(result));
         } catch (Exception e) {
             log.error("获取仪表板信息失败", e);
-            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "获取仪表板信息失败: " + e.getMessage()));
+            return ResponseEntity.internalServerError().body(R.error(500, "获取仪表板信息失败"));
         }
     }
     
@@ -148,10 +152,17 @@ public class SystemController {
     /**
      * 获取用户统计信息
      */
-    private Map<String, Object> getUserStats(User user) {
+    private Map<String, Object> getUserStats(UserDTO userDTO) {
         Map<String, Object> stats = new HashMap<>();
         
         try {
+            // 创建一个User实体用于兼容现有服务方法（仅包含必要信息）
+            User user = new User();
+            user.setId(userDTO.getId());
+            user.setUsername(userDTO.getUsername());
+            user.setUsedStorage(userDTO.getUsedStorage());
+            user.setStorageQuota(userDTO.getStorageQuota());
+            
             // 获取用户文件数量
             long fileCount = ragService.getDocumentCount(user);
             stats.put("fileCount", fileCount);
@@ -160,13 +171,13 @@ public class SystemController {
             long vectorCount = vectorStoreService.getVectorCount(user);
             stats.put("vectorCount", vectorCount);
             
-            // 获取存储使用情况
-            stats.put("usedStorage", user.getUsedStorage());
-            stats.put("storageQuota", user.getStorageQuota());
+            // 获取存储使用情况（不直接暴露敏感信息）
+            stats.put("usedStorage", userDTO.getUsedStorage());
+            stats.put("storageQuota", userDTO.getStorageQuota());
             
-            // 计算存储占比
-            double storageUsage = user.getStorageQuota() > 0 ? 
-                (double) user.getUsedStorage() / user.getStorageQuota() * 100 : 0;
+            // 计算存储占比（不直接使用用户敏感信息）
+            double storageUsage = userDTO.getStorageQuota() > 0 ? 
+                (double) userDTO.getUsedStorage() / userDTO.getStorageQuota() * 100 : 0;
             stats.put("storageUsage", Math.round(storageUsage * 100.0) / 100.0);
         } catch (Exception e) {
             log.error("获取用户统计信息失败", e);

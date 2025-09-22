@@ -1,9 +1,5 @@
 package com.aliyun.rag.model;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * 用户注册请求
  * <p>

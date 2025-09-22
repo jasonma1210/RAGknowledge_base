@@ -1,0 +1,351 @@
+/* RuoYi风格全局样式 */
+
+/* 侧边栏样式 */
+.sidebar {
+  background-color: var(--sidebar-bg-color);
+  color: var(--sidebar-text-color);
+  height: 100%;
+  overflow-y: auto;
+  transition: width var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier);
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.sidebar.expanded {
+  width: var(--sidebar-width);
+}
+
+/* 顶部导航栏样式 */
+.header {
+  background-color: var(--header-bg-color);
+  color: var(--el-text-color-primary);
+  height: var(--header-height);
+  line-height: var(--header-height);
+  box-shadow: var(--header-box-shadow);
+  padding: 0 var(--el-spacing-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 主内容区域样式 */
+.main-content {
+  background-color: var(--el-bg-color-page);
+  padding: var(--el-spacing-4);
+  height: calc(100vh - var(--header-height));
+  overflow-y: auto;
+}
+
+/* 卡片样式 */
+.ruoyi-card {
+  border-radius: var(--el-border-radius-base);
+  box-shadow: var(--el-box-shadow-light);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: box-shadow var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier);
+}
+
+.ruoyi-card:hover {
+  box-shadow: var(--el-box-shadow-lighter);
+}
+
+.ruoyi-card__header {
+  padding: var(--el-spacing-3);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ruoyi-card__title {
+  font-size: var(--el-font-size-base);
+  font-weight: var(--el-font-weight-primary);
+  color: var(--el-text-color-primary);
+  margin: 0;
+}
+
+.ruoyi-card__body {
+  padding: var(--el-spacing-4);
+}
+
+/* 表单样式 */
+.ruoyi-form {
+  background-color: var(--el-bg-color-overlay);
+  border-radius: var(--el-border-radius-base);
+  padding: var(--el-spacing-5);
+  box-shadow: var(--el-box-shadow-light);
+}
+
+.ruoyi-form__title {
+  font-size: var(--el-font-size-large);
+  font-weight: var(--el-font-weight-primary);
+  color: var(--el-text-color-primary);
+  margin-bottom: var(--el-spacing-4);
+  text-align: center;
+}
+
+/* 按钮样式 */
+.ruoyi-button {
+  border-radius: var(--el-border-radius-base);
+  transition: all var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier);
+  font-weight: var(--el-font-weight-primary);
+  padding: var(--el-spacing-2) var(--el-spacing-4);
+  font-size: var(--el-font-size-base);
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background-color: transparent;
+  outline: none;
+}
+
+.ruoyi-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ruoyi-button--primary {
+  background-color: var(--el-color-primary);
+  color: var(--el-color-white);
+  border-color: var(--el-color-primary);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.045);
+}
+
+.ruoyi-button--primary:hover:not(:disabled) {
+  background-color: var(--el-color-primary-light-3);
+  border-color: var(--el-color-primary-light-3);
+}
+
+.ruoyi-button--success {
+  background-color: var(--el-color-success);
+  color: var(--el-color-white);
+  border-color: var(--el-color-success);
+}
+
+.ruoyi-button--success:hover:not(:disabled) {
+  background-color: var(--el-color-success-light-3);
+  border-color: var(--el-color-success-light-3);
+}
+
+.ruoyi-button--warning {
+  background-color: var(--el-color-warning);
+  color: var(--el-color-white);
+  border-color: var(--el-color-warning);
+}
+
+.ruoyi-button--warning:hover:not(:disabled) {
+  background-color: var(--el-color-warning-light-3);
+  border-color: var(--el-color-warning-light-3);
+}
+
+.ruoyi-button--danger {
+  background-color: var(--el-color-danger);
+  color: var(--el-color-white);
+  border-color: var(--el-color-danger);
+}
+
+.ruoyi-button--danger:hover:not(:disabled) {
+  background-color: var(--el-color-danger-light-3);
+  border-color: var(--el-color-danger-light-3);
+}
+
+.ruoyi-button--info {
+  background-color: var(--el-color-info);
+  color: var(--el-color-white);
+  border-color: var(--el-color-info);
+}
+
+.ruoyi-button--info:hover:not(:disabled) {
+  background-color: var(--el-color-info-light-3);
+  border-color: var(--el-color-info-light-3);
+}
+
+/* 输入框样式 */
+.ruoyi-input {
+  border-radius: var(--el-border-radius-base);
+  border: 1px solid var(--el-border-color);
+  padding: var(--el-spacing-2);
+  font-size: var(--el-font-size-base);
+  transition: all var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ruoyi-input:focus {
+  outline: none;
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+/* 表格样式 */
+.ruoyi-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--el-bg-color-overlay);
+  border-radius: var(--el-border-radius-base);
+  overflow: hidden;
+  box-shadow: var(--el-box-shadow-light);
+}
+
+.ruoyi-table th {
+  background-color: var(--el-fill-color-light);
+  font-weight: var(--el-font-weight-primary);
+  color: var(--el-text-color-primary);
+  padding: var(--el-spacing-3);
+  text-align: left;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.ruoyi-table td {
+  padding: var(--el-spacing-3);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  color: var(--el-text-color-regular);
+}
+
+.ruoyi-table tr:hover {
+  background-color: var(--el-fill-color-light);
+}
+
+/* 分页样式 */
+.ruoyi-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--el-spacing-4);
+  gap: var(--el-spacing-2);
+}
+
+.ruoyi-pagination__item {
+  padding: var(--el-spacing-1) var(--el-spacing-2);
+  border: 1px solid var(--el-border-color);
+  background-color: var(--el-bg-color-overlay);
+  cursor: pointer;
+  border-radius: var(--el-border-radius-base);
+  transition: all var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier);
+}
+
+.ruoyi-pagination__item:hover {
+  background-color: var(--el-fill-color-light);
+}
+
+.ruoyi-pagination__item.active {
+  background-color: var(--el-color-primary);
+  color: var(--el-color-white);
+  border-color: var(--el-color-primary);
+}
+
+.ruoyi-pagination__item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 标签页样式 */
+.ruoyi-tabs {
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  margin-bottom: var(--el-spacing-4);
+}
+
+.ruoyi-tabs__nav {
+  display: flex;
+  list-style: none;
+}
+
+.ruoyi-tabs__item {
+  padding: var(--el-spacing-2) var(--el-spacing-4);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier);
+  color: var(--el-text-color-secondary);
+}
+
+.ruoyi-tabs__item:hover {
+  color: var(--el-color-primary);
+}
+
+.ruoyi-tabs__item.active {
+  color: var(--el-color-primary);
+  border-bottom-color: var(--el-color-primary);
+}
+
+/* 通知样式 */
+.ruoyi-alert {
+  padding: var(--el-spacing-3);
+  border-radius: var(--el-border-radius-base);
+  margin-bottom: var(--el-spacing-3);
+  border: 1px solid transparent;
+}
+
+.ruoyi-alert--success {
+  background-color: var(--el-color-success-light-9);
+  border-color: var(--el-color-success-light-7);
+  color: var(--el-color-success);
+}
+
+.ruoyi-alert--warning {
+  background-color: var(--el-color-warning-light-9);
+  border-color: var(--el-color-warning-light-7);
+  color: var(--el-color-warning);
+}
+
+.ruoyi-alert--danger {
+  background-color: var(--el-color-danger-light-9);
+  border-color: var(--el-color-danger-light-7);
+  color: var(--el-color-danger);
+}
+
+.ruoyi-alert--info {
+  background-color: var(--el-color-info-light-9);
+  border-color: var(--el-color-info-light-7);
+  color: var(--el-color-info);
+}
+
+/* 加载动画 */
+.ruoyi-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--el-spacing-4);
+  color: var(--el-text-color-secondary);
+}
+
+.ruoyi-loading__spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(64, 158, 255, 0.2);
+  border-top: 2px solid var(--el-color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: var(--el-spacing-2);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 响应式调整 */
+@media (max-width: 767.98px) {
+  .main-content {
+    padding: var(--el-spacing-3);
+  }
+  
+  .ruoyi-card__body {
+    padding: var(--el-spacing-3);
+  }
+  
+  .ruoyi-form {
+    padding: var(--el-spacing-4);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .header {
+    padding: 0 var(--el-spacing-3);
+  }
+  
+  .main-content {
+    padding: var(--el-spacing-2);
+  }
+}
