@@ -3,7 +3,7 @@ package com.aliyun.rag.config;
 import com.aliyun.rag.interceptor.AuthInterceptor;
 import com.aliyun.rag.interceptor.AccessLogInterceptor;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -24,14 +24,14 @@ public class WebConfig implements WebMvcConfigurer {
     
     private final AuthInterceptor authInterceptor;
     private final AccessLogInterceptor accessLogInterceptor;
-    private final CorsConfigurationSource corsConfigurationSource;
+    private final RedisTemplate<String, Object> redisTemplate;
     
     public WebConfig(AuthInterceptor authInterceptor, 
                     AccessLogInterceptor accessLogInterceptor,
-                    CorsConfigurationSource corsConfigurationSource) {
+                    RedisTemplate<String, Object> redisTemplate) {
         this.authInterceptor = authInterceptor;
         this.accessLogInterceptor = accessLogInterceptor;
-        this.corsConfigurationSource = corsConfigurationSource;
+        this.redisTemplate = redisTemplate;
     }
     
     @Override

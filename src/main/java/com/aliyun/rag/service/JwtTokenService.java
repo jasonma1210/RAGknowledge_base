@@ -218,4 +218,27 @@ public class JwtTokenService {
             return null;
         }
     }
+    
+    /**
+     * 刷新Access Token
+     * 
+     * @param refreshToken 刷新令牌
+     * @param user 用户信息
+     * @return 新的Access Token
+     */
+    public String refreshAccessToken(String refreshToken, User user) {
+        // 验证刷新令牌有效性
+        if (!validateToken(refreshToken)) {
+            throw new IllegalArgumentException("无效的刷新令牌");
+        }
+        
+        // 检查Token类型是否为REFRESH
+        String tokenType = getTokenType(refreshToken);
+        if (!"REFRESH".equals(tokenType)) {
+            throw new IllegalArgumentException("令牌类型不正确");
+        }
+        
+        // 生成新的Access Token
+        return generateAccessToken(user);
+    }
 }

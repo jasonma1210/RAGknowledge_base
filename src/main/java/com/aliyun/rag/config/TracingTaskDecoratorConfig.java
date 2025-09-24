@@ -4,10 +4,8 @@ import org.slf4j.MDC;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskDecorator;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.Map;
-import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * 链路追踪任务装饰器配置
@@ -42,31 +40,6 @@ public class TracingTaskDecoratorConfig {
                 }
             };
         }
-    }
-
-    /**
-     * 创建支持链路追踪的线程池执行器
-     */
-    public static ThreadPoolTaskExecutor createTracingExecutor(String threadNamePrefix, 
-                                                             int corePoolSize, 
-                                                             int maxPoolSize, 
-                                                             int queueCapacity,
-                                                             int keepAliveSeconds) {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(corePoolSize);
-        executor.setMaxPoolSize(maxPoolSize);
-        executor.setQueueCapacity(queueCapacity);
-        executor.setKeepAliveSeconds(keepAliveSeconds);
-        executor.setThreadNamePrefix(threadNamePrefix);
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(30);
-        
-        // 设置任务装饰器，支持链路追踪
-        executor.setTaskDecorator(new TracingTaskDecorator());
-        
-        executor.initialize();
-        return executor;
     }
 
     /**

@@ -45,6 +45,7 @@ public class DocumentProcessor {
     @Value("${document.chunk.overlap:200}")
     private int CHUNK_OVERLAP;
 
+    // EPUB文件名匹配模式，用于识别.epub结尾的文件，不区分大小写
     private static final Pattern EPUB_PATTERN = Pattern.compile(".*\\.epub$", Pattern.CASE_INSENSITIVE);
 
     /**

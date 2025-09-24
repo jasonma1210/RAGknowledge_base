@@ -184,17 +184,17 @@ public class AccessLogInterceptor implements HandlerInterceptor {
             } else if ("DELETE".equals(method)) {
                 metricsService.recordDocumentDelete();
             }
-        } else if (uri.startsWith("/api/search")) {
+        } else if (uri.startsWith("/search")) {
             metricsService.recordSearchRequest("vector_search");
-        } else if (uri.startsWith("/api/chat")) {
+        } else if (uri.startsWith("/chat")) {
             metricsService.recordAiChat();
-        } else if (uri.startsWith("/api/auth/login")) {
+        } else if (uri.startsWith("/auth/login")) {
             if (status >= 200 && status < 300) {
                 metricsService.recordUserLogin("standard");
             } else {
                 metricsService.recordUserLoginFailure("invalid_credentials");
             }
-        } else if (uri.startsWith("/api/auth/register")) {
+        } else if (uri.startsWith("/auth/register")) {
             if (status >= 200 && status < 300) {
                 metricsService.recordUserRegistration();
             }

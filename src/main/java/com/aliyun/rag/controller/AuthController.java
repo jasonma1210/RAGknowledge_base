@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.Map;
 
 /**
  * 认证控制器
@@ -92,5 +93,24 @@ public class AuthController {
         
         AuthResponse response = authService.changePassword(currentUser, request.getOldPassword(), request.getNewPassword());
         return ResponseEntity.ok(R.success(response));
+    }
+    
+    /**
+     * 刷新Token
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<R<AuthResponse>> refreshToken(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            AuthResponse response = AuthResponse.failure(com.aliyun.rag.model.ErrorCode.TOKEN_MISSING, "缺少刷新令牌");
+            return ResponseEntity.badRequest().body(R.success(response));
+        }
+        
+        AuthResponse response = authService.refreshToken(refreshToken);
+        if (response.isSuccess()) {
+            return ResponseEntity.ok(R.success(response));
+        } else {
+            return ResponseEntity.badRequest().body(R.success(response));
+        }
     }
 }

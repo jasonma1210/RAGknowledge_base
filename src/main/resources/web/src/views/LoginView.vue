@@ -256,25 +256,31 @@ const handleLogin = async () => {
       const response: any = await authAPI.login(loginForm.username, loginForm.password)
       console.log('登录响应:', response)
       if (response.success) {
-        // 适配新的响应数据结构
-        localStorage.setItem('token', response.data.token)
-        if (response.data.refreshToken) {
-          localStorage.setItem('refreshToken', response.data.refreshToken)
-        }
-        
-        // 保存用户信息
-        if (response.data.user) {
-          localStorage.setItem('userInfo', JSON.stringify(response.data.user))
-        }
         ElMessage.success('登录成功')
         // 登录成功后直接跳转，不使用setTimeout
         router.push('/dashboard')
       } else {
-        ElMessage.error(response.data || '登录失败')
+        // 从response.data获取错误信息
+        const errorMessage = response.data || response.message || '登录失败'
+        ElMessage.error(errorMessage)
       }
     } catch (error: any) {
       console.error('登录失败:', error)
-      ElMessage.error('登录失败: ' + (error.message || '网络错误'))
+      // 处理网络错误或HTTP错误状态
+      let errorMessage = '登录失败'
+      if (error.response && error.response.data) {
+        // 如果后端返回了错误信息
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data
+        } else if (error.response.data.data) {
+          errorMessage = error.response.data.data
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      ElMessage.error('登录失败: ' + errorMessage)
     } finally {
       loginLoading.value = false
     }
@@ -306,11 +312,27 @@ const handleRegister = async () => {
         registerForm.password = ''
         registerForm.confirmPassword = ''
       } else {
-        ElMessage.error(response.data || '注册失败')
+        // 从response.data获取错误信息
+        const errorMessage = response.data || response.message || '注册失败'
+        ElMessage.error(errorMessage)
       }
     } catch (error: any) {
       console.error('注册失败:', error)
-      ElMessage.error('注册失败: ' + (error.message || '网络错误'))
+      // 处理网络错误或HTTP错误状态
+      let errorMessage = '注册失败'
+      if (error.response && error.response.data) {
+        // 如果后端返回了错误信息
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data
+        } else if (error.response.data.data) {
+          errorMessage = error.response.data.data
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      ElMessage.error('注册失败: ' + errorMessage)
     } finally {
       registerLoading.value = false
     }

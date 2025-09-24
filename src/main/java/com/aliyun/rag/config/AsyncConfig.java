@@ -171,4 +171,64 @@ public class AsyncConfig {
                 
         return executor;
     }
+
+
+    /**
+     * 通用Trace任务线程池
+     * <p>
+     * 用于处理其他类型的异步任务，Trace
+     * </p>
+     *
+     * @return 通用Trace任务线程池执行器
+     */
+    @Bean(name = "traceExecutor")
+    public Executor traceExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        executor.setCorePoolSize(threadPoolProperties.getAsyncTask().getCorePoolSize());
+        executor.setMaxPoolSize(threadPoolProperties.getAsyncTask().getMaxPoolSize());
+        executor.setQueueCapacity(threadPoolProperties.getAsyncTask().getQueueCapacity());
+        executor.setThreadNamePrefix(threadPoolProperties.getAsyncTask().getThreadNamePrefix());
+        executor.setKeepAliveSeconds(threadPoolProperties.getAsyncTask().getKeepAliveSeconds());
+
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.initialize();
+
+        log.info("通用Trace任务线程池初始化完成: corePoolSize={}, maxPoolSize={}, queueCapacity={}",
+                executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity());
+
+        return executor;
+    }
+    
+    /**
+     * 支持链路追踪的Trace任务线程池
+     * <p>
+     * 使用与traceExecutor相同的配置，但添加了链路追踪装饰器
+     * </p>
+     *
+     * @return 支持链路追踪的Trace任务线程池执行器
+     */
+    @Bean(name = "tracingTraceExecutor")
+    public ThreadPoolTaskExecutor tracingTraceExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        
+        // 使用traceProcess配置
+        executor.setCorePoolSize(threadPoolProperties.getTraceProcess().getCorePoolSize());
+        executor.setMaxPoolSize(threadPoolProperties.getTraceProcess().getMaxPoolSize());
+        executor.setQueueCapacity(threadPoolProperties.getTraceProcess().getQueueCapacity());
+        executor.setThreadNamePrefix(threadPoolProperties.getTraceProcess().getThreadNamePrefix());
+        executor.setKeepAliveSeconds(threadPoolProperties.getTraceProcess().getKeepAliveSeconds());
+        
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        
+        // 设置任务装饰器，支持链路追踪
+        executor.setTaskDecorator(new TracingTaskDecoratorConfig.TracingTaskDecorator());
+        
+        executor.initialize();
+        return executor;
+    }
 }

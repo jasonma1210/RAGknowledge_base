@@ -26,15 +26,17 @@ public class JwtConfig {
     private String secret = "RAGKnowledgeBaseDefaultSecretKeyForJWTTokenGenerationAndValidation2025";
 
     /**
-     * Token过期时间（毫秒）
+     * Access Token过期时间（毫秒）
+     * 建议设置为较短时间（如30分钟到2小时），以提高安全性
      */
-    @Min(value = 3600000, message = "Token过期时间不能少于1小时")
-    private Long expiration = 86400000L; // 24小时
+    @Min(value = 1800000, message = "Access Token过期时间不能少于30分钟")
+    private Long expiration = 7200000L; // 2小时
 
     /**
-     * Token刷新时间（毫秒）
+     * Refresh Token过期时间（毫秒）
+     * 建议设置为较长时间（如7天到30天），用于自动刷新Access Token
      */
-    @Min(value = 1800000, message = "Token刷新时间不能少于30分钟")
+    @Min(value = 86400000, message = "Refresh Token过期时间不能少于1天")
     private Long refreshExpiration = 604800000L; // 7天
 
     /**

@@ -34,7 +34,26 @@ apiClient.interceptors.request.use(
 
 // 响应拦截器
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
+  async (response: AxiosResponse) => {
+    // 检查是否有新的Access Token在响应头中
+    const newAccessToken = response.headers['x-new-access-token']
+    if (newAccessToken) {
+      localStorage.setItem('token', newAccessToken)
+    }
+    
+    // 检查是否需要刷新Token
+    const tokenRefreshNeeded = response.headers['x-token-refresh-needed']
+    if (tokenRefreshNeeded) {
+      console.log('检测到Token即将过期，建议刷新')
+      try {
+        // 尝试刷新Token
+        await authAPI.refreshToken()
+        console.log('Token刷新成功')
+      } catch (error) {
+        console.error('Token刷新失败:', error)
+      }
+    }
+    
     // 直接返回后端的统一响应格式
     return response.data
   },
@@ -151,15 +170,19 @@ class AuthAPI {
       const response: any = await apiClient.post<ApiResponse<any>>('/auth/refresh', { refreshToken })
       
       // 更新tokens
-      if (response.data?.token) {
+      if (response.success && response.data?.token) {
         localStorage.setItem('token', response.data.token)
-      }
-      if (response.data?.refreshToken) {
-        localStorage.setItem('refreshToken', response.data.refreshToken)
+        if (response.data.refreshToken) {
+          localStorage.setItem('refreshToken', response.data.refreshToken)
+        }
       }
       
       return response
     } catch (error: any) {
+      // 如果刷新失败，清除本地存储
+      localStorage.removeItem('token')
+      localStorage.removeItem('refreshToken')
+      localStorage.removeItem('userInfo')
       throw error
     }
   }

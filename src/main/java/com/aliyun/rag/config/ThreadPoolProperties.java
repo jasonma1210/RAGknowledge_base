@@ -37,6 +37,11 @@ public class ThreadPoolProperties {
      */
     private PoolConfig asyncTask = new PoolConfig();
 
+    /**
+     * 请求追踪线程池配置
+     */
+    private PoolConfig traceProcess = new PoolConfig();
+
     // Getters and Setters
     public PoolConfig getFileProcess() {
         return fileProcess;
@@ -68,6 +73,14 @@ public class ThreadPoolProperties {
 
     public void setAsyncTask(PoolConfig asyncTask) {
         this.asyncTask = asyncTask;
+    }
+
+    public PoolConfig getTraceProcess() {
+        return traceProcess;
+    }
+
+    public void setTraceProcess(PoolConfig traceProcess) {
+        this.traceProcess = traceProcess;
     }
 
     /**

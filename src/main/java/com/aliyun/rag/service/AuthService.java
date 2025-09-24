@@ -120,6 +120,7 @@ public class AuthService {
             // 返回认证信息
             UserDTO userDTO = UserDTO.fromUser(user);
             AuthResponse response = AuthResponse.success(accessToken, userDTO, "登录成功");
+            response.setRefreshToken(refreshToken);
 
             log.info("用户登录成功: {}", user.getUsername());
             return response;
@@ -267,6 +268,61 @@ public class AuthService {
         } catch (Exception e) {
             log.error("修改密码失败: {}", e.getMessage(), e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "修改密码失败");
+        }
+    }
+    
+    /**
+     * 刷新Token
+     * 
+     * @param refreshToken 刷新令牌
+     * @return 新的认证信息
+     */
+    public AuthResponse refreshToken(String refreshToken) {
+        try {
+            // 验证刷新令牌有效性
+            if (!jwtTokenService.validateToken(refreshToken)) {
+                return AuthResponse.failure(ErrorCode.TOKEN_INVALID, "无效的刷新令牌");
+            }
+            
+            // 检查Token类型是否为REFRESH
+            String tokenType = jwtTokenService.getTokenType(refreshToken);
+            if (!"REFRESH".equals(tokenType)) {
+                return AuthResponse.failure(ErrorCode.TOKEN_INVALID, "令牌类型不正确");
+            }
+            
+            // 从令牌中获取用户ID
+            Long userId = jwtTokenService.getUserIdFromToken(refreshToken);
+            if (userId == null) {
+                return AuthResponse.failure(ErrorCode.TOKEN_INVALID, "无法获取用户信息");
+            }
+            
+            // 从Redis中获取存储的刷新令牌进行比对
+            String refreshTokenKey = "refresh_token:" + userId;
+            String storedRefreshToken = (String) redisTemplate.opsForValue().get(refreshTokenKey);
+            if (storedRefreshToken == null || !storedRefreshToken.equals(refreshToken)) {
+                return AuthResponse.failure(ErrorCode.TOKEN_INVALID, "刷新令牌不匹配或已过期");
+            }
+            
+            // 获取用户信息
+            User user = getUserById(userId);
+            if (user == null) {
+                return AuthResponse.failure(ErrorCode.USER_NOT_FOUND, "用户不存在");
+            }
+            
+            // 生成新的Access Token
+            String newAccessToken = jwtTokenService.refreshAccessToken(refreshToken, user);
+            
+            // 返回新的认证信息
+            UserDTO userDTO = UserDTO.fromUser(user);
+            AuthResponse response = AuthResponse.success(newAccessToken, userDTO, "Token刷新成功");
+            response.setRefreshToken(refreshToken); // 刷新令牌保持不变
+            
+            log.info("用户 {} Token刷新成功", user.getUsername());
+            return response;
+            
+        } catch (Exception e) {
+            log.error("Token刷新失败: {}", e.getMessage(), e);
+            return AuthResponse.failure(ErrorCode.SYSTEM_ERROR, "Token刷新失败");
         }
     }
 }

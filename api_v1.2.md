@@ -91,7 +91,7 @@ Content-Type: application/json
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -123,7 +123,7 @@ Content-Type: application/json
 - 邮箱地址会进行脱敏处理（保留首尾字符，中间用****替换）
 - 返回信息中不包含isDeleted等内部字段
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -155,12 +155,12 @@ Content-Type: application/json
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
   "data": {
-    "token": "eyJhbGciOiJIUzUxMiJ9...",  // JWT访问令牌（24小时有效）
+    "token": "eyJhbGciOiJIUzUxMiJ9...",  // JWT访问令牌（2小时有效）
     "refreshToken": "string",           // 刷新令牌（7天有效）
     "user": {                          // 用户信息（已脱敏）
       "id": 123,
@@ -187,7 +187,7 @@ Content-Type: application/json
 - 邮箱地址会进行脱敏处理（保留首尾字符，中间用****替换）
 - 返回信息中不包含gmtModified和isDeleted等内部字段
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -201,6 +201,43 @@ Content-Type: application/json
 - 400: 用户名或密码错误
 - 401: 认证失败
 
+#### 2.2.1.1 登录
+
+用户登录接口，成功后返回JWT访问令牌和刷新令牌。
+
+**请求URL**: `POST /auth/login`
+
+**请求参数**:
+
+``json
+{
+  "username": "testuser",
+  "password": "password123"
+}
+```
+
+**响应示例**:
+
+```
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzUxMiJ9...",  // JWT访问令牌（2小时有效）
+    "refreshToken": "string",           // 刷新令牌（7天有效）
+    "user": {
+      "id": 1,
+      "username": "testuser",
+      "email": "test@example.com",
+      "level": 0,
+      "storageQuota": 5368709120,
+      "usedStorage": 0
+    },
+    "message": "登录成功"
+  },
+  "timestamp": 1640995200000
+}
+```
+
 ### 2.3 获取用户信息
 
 **接口地址**: `GET /auth/profile`
@@ -212,7 +249,7 @@ X-Trace-Id: {trace_id}  // 可选，链路追踪ID
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -240,7 +277,7 @@ X-Trace-Id: {trace_id}  // 可选，链路追踪ID
 - 邮箱地址会进行脱敏处理（保留首尾字符，中间用****替换）
 - 返回信息中不包含gmtModified和isDeleted等内部字段
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -270,7 +307,7 @@ Content-Type: application/json
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -283,7 +320,7 @@ Content-Type: application/json
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -302,7 +339,7 @@ Authorization: Bearer {access_token}
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -312,7 +349,7 @@ Authorization: Bearer {access_token}
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -345,7 +382,7 @@ tags: 标签（可选，逗号分隔，最大10个标签）
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -367,7 +404,7 @@ tags: 标签（可选，逗号分隔，最大10个标签）
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -408,7 +445,7 @@ keyword: 搜索关键词（可选，搜索标题和描述）
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -438,7 +475,7 @@ keyword: 搜索关键词（可选，搜索标题和描述）
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -466,7 +503,7 @@ documentId: 文档ID
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -490,7 +527,7 @@ documentId: 文档ID
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -543,7 +580,7 @@ documentId: 文档ID
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -553,7 +590,7 @@ documentId: 文档ID
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -601,7 +638,7 @@ X-Trace-Id: {trace_id}  // 可选，链路追踪ID
 - `HYBRID`: 混合搜索（结合语义和关键词）
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -629,7 +666,7 @@ X-Trace-Id: {trace_id}  // 可选，链路追踪ID
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -661,7 +698,7 @@ minScore: 最小相似度（可选，默认0.7）
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -686,7 +723,7 @@ minScore: 最小相似度（可选，默认0.7）
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -752,7 +789,7 @@ X-Trace-Id: {trace_id}  // 可选，链路追踪ID
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -787,7 +824,7 @@ size: 每页大小（可选，默认10，最大100）
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -813,7 +850,7 @@ size: 每页大小（可选，默认10，最大100）
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -836,7 +873,7 @@ Authorization: Bearer {access_token}
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -854,7 +891,7 @@ Authorization: Bearer {access_token}
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -877,7 +914,7 @@ Authorization: Bearer {access_token}
 ```
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -905,7 +942,7 @@ Authorization: Bearer {access_token}
 ```
 
 **失败响应**:
-```json
+``json
 {
   "success": false,
   "code": 500,
@@ -978,7 +1015,7 @@ Authorization: Bearer {access_token}
 **接口地址**: `GET /actuator/metrics`
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -1009,7 +1046,7 @@ Authorization: Bearer {access_token}
 **示例**: `GET /actuator/metrics/document.upload.count`
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -1039,7 +1076,7 @@ Authorization: Bearer {access_token}
 **接口地址**: `GET /actuator/info`
 
 **成功响应**:
-```json
+``json
 {
   "success": true,
   "code": 200,
@@ -1158,7 +1195,7 @@ Authorization: Bearer {access_token}
 ```
 
 **Token说明**：
-- **访问令牌(access_token)**: 有效期24小时，用于API访问认证
+- **访问令牌(access_token)**: 有效期2小时，用于API访问认证
 - **刷新令牌(refresh_token)**: 有效期7天，用于获取新的访问令牌
 - **Token格式**: JWT（JSON Web Token），包含用户ID、用户名、权限等信息
 
