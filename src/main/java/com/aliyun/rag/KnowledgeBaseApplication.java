@@ -4,6 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 /**
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
         ManagementWebSecurityAutoConfiguration.class
 })
 @EnableTransactionManagement
+@EnableAspectJAutoProxy
 public class KnowledgeBaseApplication {
     
     public static void main(String[] args) {

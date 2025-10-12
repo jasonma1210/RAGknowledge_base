@@ -5,29 +5,12 @@ spring:
     multipart:
       max-file-size: 100MB
       max-request-size: 100MB
-      # 启用文件大小异常处理
-      resolve-lazily: true
-  datasource:
-    url: jdbc:mysql://localhost:3306/rag_knowledge_base?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    database-platform: org.hibernate.dialect.MySQL8Dialect
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:db/schema.sql
-      data-locations: classpath:db/data.sql
   data:
     redis:
       host: localhost
       port: 6379
       database: 0
-      password: 
+      password:
       timeout: 2000ms
       lettuce:
         pool:
@@ -35,9 +18,27 @@ spring:
           max-wait: -1ms
           max-idle: 8
           min-idle: 0
-
+  datasource:
+    url: jdbc:mysql://localhost:3306/rag_knowledge_base?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: 12345678
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # HikariCP连接池优化配置
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      connection-test-query: SELECT 1
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    database-platform: org.hibernate.dialect.MySQL8Dialect
 server:
-  port: 8082
+  port: 8080
 
 milvus:
   host: localhost
@@ -53,74 +54,68 @@ langchain4j:
         model-name: qwen-max-latest
         temperature: 0.7
         max-tokens: 2000
-        api-key: ${your apikey}
+        api-key: sk-321321312
+      streaming-chat-model:
+        model-name: qwen-max-latest
+        temperature: 0.7
+        max-tokens: 2000
+        api-key: sk-21321321
       embedding-model:
         model-name: text-embedding-v4
-        api-key: ${your apikey}
+        api-key: sk-213213213213
 
 document:
   chunk:
     size: 1000
     overlap: 200
-  supported-formats:
-    - pdf
-    - docx
-    - txt
-    - md
-    - epub
-
-# 用户等级配置
-user:
-  levels:
-    basic:
-      code: 0
-      quota: 5368709120  # 5GB
-    advanced:
-      code: 1
-      quota: 107374182400  # 100GB
+  supported-formats: pdf,docx,txt,md,epub
 
 retrieval:
   top-k: 10
   score-threshold: 0.7
 
-# 文件上传配置
-file:
-  upload:
-    # 最大文件大小（100MB）
-    max-file-size: 104857600
-    # 大文件阈值（50MB）
-    large-file-threshold: 52428800
-    # 支持的文件类型
-    allowed-types:
-      - pdf
-      - docx
-      - txt
-      - md
-      - epub
-    # 文件处理缓冲区大小（8KB）
-    buffer-size: 8192
-    # 是否启用文件类型检查
-    enable-type-validation: true
-    # 是否启用文件大小检查
-    enable-size-validation: true
-    # 文件处理超时时间（秒）
-    processing-timeout-seconds: 300
+logging:
+  level:
+    com.aliyun.rag: DEBUG
+    dev.langchain4j: INFO
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus,env,configprops
+      base-path: /actuator
   endpoint:
     health:
       show-details: always
+      show-components: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+        step: 60s
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        method.timed: true
+      percentiles:
+        http.server.requests: 0.5,0.75,0.95,0.99
+      sla:
+        http.server.requests: 100ms,200ms,500ms,1s,2s
 
 # 七牛云配置
 qiniu:
-  access-key:  ${your accesskey}
-  secret-key:  ${your secretkey}
-  bucket: ${your bucket}
-  domain: ${your domain}
+  access-key: 123
+  secret-key: 321
+  bucket: 3333
+  domain: http://file.3333333.cn
+
+
 
 # JWT配置
 jwt:
@@ -133,10 +128,47 @@ jwt:
 
 # CORS跨域配置
 cors:
-  # 生产环境需要配置具体的前端域名，不能使用通配符
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://localhost:5175}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080,http://localhost:5175}
   allowed-methods: GET,POST,PUT,DELETE,OPTIONS
-  allowed-headers: Content-Type,Authorization,X-Requested-With,Accept,Origin
-  exposed-headers: Content-Length,Content-Range
+  allowed-headers: "*"
   allow-credentials: true
-  max-age: 3600  # 1小时
+  max-age: 3600
+
+# 异步线程池配置
+async:
+  thread-pool:
+    # 文件处理线程池
+    file-process:
+      core-pool-size: 5
+      max-pool-size: 20
+      queue-capacity: 100
+      thread-name-prefix: "FileProcess-"
+      keep-alive-seconds: 300
+    # 文档解析线程池
+    document-parse:
+      core-pool-size: 3
+      max-pool-size: 10
+      queue-capacity: 50
+      thread-name-prefix: "DocParse-"
+      keep-alive-seconds: 300
+    # 向量处理线程池
+    vector-process:
+      core-pool-size: 2
+      max-pool-size: 8
+      queue-capacity: 30
+      thread-name-prefix: "VectorProcess-"
+      keep-alive-seconds: 600
+    # 通用异步任务线程池
+    async-task:
+      core-pool-size: 2
+      max-pool-size: 5
+      queue-capacity: 20
+      thread-name-prefix: "AsyncTask-"
+      keep-alive-seconds: 60
+    # Trace处理线程池
+    trace-process:
+      core-pool-size: 4
+      max-pool-size: 14
+      queue-capacity: 100
+      thread-name-prefix: "TraceProcess-"
+      keep-alive-seconds: 600

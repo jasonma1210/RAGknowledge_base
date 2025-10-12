@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -33,17 +34,22 @@ public class MetricsService {
     private final Counter userLoginFailureCounter;
     private final Counter searchRequestCounter;
     private final Counter aiChatCounter;
+    private final Counter rateLimitCounter;
+    private final Counter errorCounter;
 
     // 计时器
     private final Timer documentProcessingTimer;
     private final Timer vectorSearchTimer;
     private final Timer fileUploadTimer;
+    private final Timer aiResponseTimer;
+    private final Timer chunkingTimer;
 
     // Gauge指标
     private final AtomicLong activeUsersGauge;
     private final AtomicLong storageUsageGauge;
     private final AtomicLong totalDocumentsGauge;
     private final AtomicLong totalVectorsGauge;
+    private final AtomicLong cacheHitRateGauge;
 
     public MetricsService(Counter documentUploadCounter, 
                          Counter documentUploadFailureCounter,
@@ -53,13 +59,18 @@ public class MetricsService {
                          Counter userLoginFailureCounter,
                          Counter searchRequestCounter,
                          Counter aiChatCounter,
+                         Counter rateLimitCounter,
+                         Counter errorCounter,
                          Timer documentProcessingTimer,
                          Timer vectorSearchTimer,
                          Timer fileUploadTimer,
+                         Timer aiResponseTimer,
+                         Timer chunkingTimer,
                          AtomicLong activeUsersGauge,
                          AtomicLong storageUsageGauge,
                          AtomicLong totalDocumentsGauge,
-                         AtomicLong totalVectorsGauge) {
+                         AtomicLong totalVectorsGauge,
+                         AtomicLong cacheHitRateGauge) {
         this.documentUploadCounter = documentUploadCounter;
         this.documentUploadFailureCounter = documentUploadFailureCounter;
         this.documentDeleteCounter = documentDeleteCounter;
@@ -68,13 +79,18 @@ public class MetricsService {
         this.userLoginFailureCounter = userLoginFailureCounter;
         this.searchRequestCounter = searchRequestCounter;
         this.aiChatCounter = aiChatCounter;
+        this.rateLimitCounter = rateLimitCounter;
+        this.errorCounter = errorCounter;
         this.documentProcessingTimer = documentProcessingTimer;
         this.vectorSearchTimer = vectorSearchTimer;
         this.fileUploadTimer = fileUploadTimer;
+        this.aiResponseTimer = aiResponseTimer;
+        this.chunkingTimer = chunkingTimer;
         this.activeUsersGauge = activeUsersGauge;
         this.storageUsageGauge = storageUsageGauge;
         this.totalDocumentsGauge = totalDocumentsGauge;
         this.totalVectorsGauge = totalVectorsGauge;
+        this.cacheHitRateGauge = cacheHitRateGauge;
     }
 
     /**
@@ -263,5 +279,103 @@ public class MetricsService {
      */
     public void subtractTotalVectors(long count) {
         totalVectorsGauge.addAndGet(-count);
+    }
+
+    /**
+     * 记录限流触发
+     */
+    public void recordRateLimit(String endpoint, String clientId) {
+        rateLimitCounter.increment();
+        log.debug("记录限流指标: 端点={}, 客户端={}", endpoint, clientId);
+    }
+
+    /**
+     * 记录错误
+     */
+    public void recordError(String errorType, String component) {
+        errorCounter.increment();
+        log.debug("记录错误指标: 类型={}, 组件={}", errorType, component);
+    }
+
+    /**
+     * 记录AI响应时间
+     */
+    public Timer.Sample startAiResponseTimer() {
+        return Timer.start();
+    }
+
+    public void recordAiResponseTime(Timer.Sample sample) {
+        sample.stop(aiResponseTimer);
+        log.debug("记录AI响应时间指标");
+    }
+
+    /**
+     * 记录分块处理时间
+     */
+    public Timer.Sample startChunkingTimer() {
+        return Timer.start();
+    }
+
+    public void recordChunkingTime(Timer.Sample sample) {
+        sample.stop(chunkingTimer);
+        log.debug("记录分块处理时间指标");
+    }
+
+    /**
+     * 更新缓存命中率
+     */
+    public void updateCacheHitRate(double rate) {
+        cacheHitRateGauge.set((long) (rate * 100)); // 转换为百分比
+        log.debug("更新缓存命中率: {}%", rate * 100);
+    }
+
+    /**
+     * 记录文档处理指标（带类型标签）
+     */
+    public void recordDocumentProcessingMetrics(String documentType, long processingTime, boolean success) {
+        documentProcessingTimer.record(processingTime, TimeUnit.MILLISECONDS);
+        if (success) {
+            documentUploadCounter.increment();
+        } else {
+            documentUploadFailureCounter.increment();
+        }
+        log.debug("记录文档处理指标: 类型={}, 时间={}ms, 成功={}", documentType, processingTime, success);
+    }
+
+    /**
+     * 记录向量搜索指标（带类型标签）
+     */
+    public void recordVectorSearchMetrics(String searchType, long latency) {
+        vectorSearchTimer.record(latency, TimeUnit.MILLISECONDS);
+        searchRequestCounter.increment();
+        log.debug("记录向量搜索指标: 类型={}, 延迟={}ms", searchType, latency);
+    }
+
+    /**
+     * 记录用户行为指标
+     */
+    public void recordUserBehavior(String action, String userLevel) {
+        switch (action) {
+            case "login" -> userLoginCounter.increment();
+            case "register" -> userRegistrationCounter.increment();
+            case "search" -> searchRequestCounter.increment();
+            case "chat" -> aiChatCounter.increment();
+        }
+        log.debug("记录用户行为指标: 行为={}, 等级={}", action, userLevel);
+    }
+
+    /**
+     * 获取系统健康指标
+     */
+    public java.util.Map<String, Object> getSystemHealthMetrics() {
+        java.util.Map<String, Object> metrics = new java.util.HashMap<>();
+        
+        metrics.put("activeUsers", activeUsersGauge.get());
+        metrics.put("totalDocuments", totalDocumentsGauge.get());
+        metrics.put("totalVectors", totalVectorsGauge.get());
+        metrics.put("storageUsageBytes", storageUsageGauge.get());
+        metrics.put("cacheHitRate", cacheHitRateGauge.get());
+        
+        return metrics;
     }
 }

@@ -126,8 +126,9 @@ public class RAGService {
             // 处理文档内容
             String content = documentProcessor.processDocument(file, documentInfo);
             
-            // 分块
-            String[] chunks = documentProcessor.chunkText(content);
+            // 分块（使用智能分块策略）
+            String fileExtension = getFileExtension(file.getOriginalFilename());
+            String[] chunks = documentProcessor.chunkText(content, fileExtension);
             documentInfo.setChunkCount(chunks.length);
             
             // 生成嵌入向量
@@ -147,7 +148,7 @@ public class RAGService {
      * 保存文档信息到数据库（事务操作）
      */
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
-    private DocumentInfo saveDocumentInfo(DocumentProcessResult processResult, User user, MultipartFile file) {
+    public DocumentInfo saveDocumentInfo(DocumentProcessResult processResult, User user, MultipartFile file) {
         try {
             DocumentInfo documentInfo = processResult.getDocumentInfo();
             String[] chunks = processResult.getChunks();

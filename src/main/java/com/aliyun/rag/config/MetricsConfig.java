@@ -194,4 +194,61 @@ public class MetricsConfig {
                 .register(meterRegistry);
         return totalVectors;
     }
+
+    /**
+     * 限流计数器
+     */
+    @Bean
+    public Counter rateLimitCounter(MeterRegistry meterRegistry) {
+        return Counter.builder("rate.limit.count")
+                .description("Total number of rate limit triggers")
+                .tag("type", "rate_limit")
+                .register(meterRegistry);
+    }
+
+    /**
+     * 错误计数器
+     */
+    @Bean
+    public Counter errorCounter(MeterRegistry meterRegistry) {
+        return Counter.builder("system.error.count")
+                .description("Total number of system errors")
+                .tag("type", "error")
+                .register(meterRegistry);
+    }
+
+    /**
+     * AI响应时间计时器
+     */
+    @Bean
+    public Timer aiResponseTimer(MeterRegistry meterRegistry) {
+        return Timer.builder("ai.response.time")
+                .description("Time taken for AI responses")
+                .tag("operation", "ai_response")
+                .register(meterRegistry);
+    }
+
+    /**
+     * 分块处理时间计时器
+     */
+    @Bean
+    public Timer chunkingTimer(MeterRegistry meterRegistry) {
+        return Timer.builder("document.chunking.time")
+                .description("Time taken for document chunking")
+                .tag("operation", "chunking")
+                .register(meterRegistry);
+    }
+
+    /**
+     * 缓存命中率gauge
+     */
+    @Bean
+    public AtomicLong cacheHitRateGauge(MeterRegistry meterRegistry) {
+        AtomicLong cacheHitRate = new AtomicLong(0);
+        Gauge.builder("cache.hit.rate.percent", cacheHitRate, AtomicLong::doubleValue)
+                .description("Cache hit rate percentage")
+                .tag("type", "cache")
+                .register(meterRegistry);
+        return cacheHitRate;
+    }
 }

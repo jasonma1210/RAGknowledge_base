@@ -2,6 +2,7 @@ package com.aliyun.rag.config;
 
 import com.aliyun.rag.interceptor.AuthInterceptor;
 import com.aliyun.rag.interceptor.AccessLogInterceptor;
+import com.aliyun.rag.interceptor.RateLimitInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -24,18 +25,27 @@ public class WebConfig implements WebMvcConfigurer {
     
     private final AuthInterceptor authInterceptor;
     private final AccessLogInterceptor accessLogInterceptor;
+    private final RateLimitInterceptor rateLimitInterceptor;
     private final RedisTemplate<String, Object> redisTemplate;
     
     public WebConfig(AuthInterceptor authInterceptor, 
                     AccessLogInterceptor accessLogInterceptor,
+                    RateLimitInterceptor rateLimitInterceptor,
                     RedisTemplate<String, Object> redisTemplate) {
         this.authInterceptor = authInterceptor;
         this.accessLogInterceptor = accessLogInterceptor;
+        this.rateLimitInterceptor = rateLimitInterceptor;
         this.redisTemplate = redisTemplate;
     }
     
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 注册限流拦截器（最先执行）
+        registry.addInterceptor(rateLimitInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/", "/index.html", "/static/**", "/assets/**", "/favicon.ico")
+                .excludePathPatterns("/actuator/health"); // 排除健康检查
+        
         // 注册访问日志拦截器，记录所有请求的访问日志
         registry.addInterceptor(accessLogInterceptor)
                 .addPathPatterns("/**")

@@ -10,6 +10,7 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +39,9 @@ import java.util.regex.Pattern;
 public class DocumentProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentProcessor.class);
+
+    @Autowired
+    private IntelligentChunkingService intelligentChunkingService;
 
     @Value("${document.chunk.size:1000}")
     private int CHUNK_SIZE;
@@ -157,13 +161,33 @@ public class DocumentProcessor {
     }
 
     /**
-     * 将文本分块
+     * 将文本分块（使用智能分块策略）
      */
     public String[] chunkText(String text) {
+        return chunkText(text, "txt");
+    }
+
+    /**
+     * 将文本分块（指定文件类型）
+     */
+    public String[] chunkText(String text, String fileExtension) {
         if (text == null || text.trim().isEmpty()) {
             return new String[0];
         }
 
+        try {
+            // 使用智能分块服务
+            return intelligentChunkingService.intelligentChunkText(text, fileExtension);
+        } catch (Exception e) {
+            log.warn("智能分块失败，使用默认分块策略: {}", e.getMessage());
+            return defaultChunkText(text);
+        }
+    }
+
+    /**
+     * 默认分块方法（保持向后兼容）
+     */
+    private String[] defaultChunkText(String text) {
         // 简单的分块策略：按段落和句子分割
         String[] paragraphs = text.split("\n\n");
         java.util.List<String> chunks = new java.util.ArrayList<>();
@@ -206,5 +230,12 @@ public class DocumentProcessor {
         }
 
         return chunks.toArray(new String[0]);
+    }
+
+    /**
+     * 获取分块统计信息
+     */
+    public java.util.Map<String, Object> getChunkingStats(String[] chunks) {
+        return intelligentChunkingService.getChunkingStats(chunks);
     }
 }

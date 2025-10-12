@@ -1,0 +1,221 @@
+# 生产环境配置
+spring:
+  application:
+    name: rag-knowledge-base
+  profiles:
+    active: prod
+  
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: 0
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-wait: -1ms
+          max-idle: 10
+          min-idle: 5
+  
+  datasource:
+    # 主库配置（写操作）
+    master:
+      url: jdbc:mysql://${DB_MASTER_HOST:localhost}:${DB_MASTER_PORT:3306}/${DB_NAME:rag_knowledge_base}?useUnicode=true&characterEncoding=utf8&useSSL=true&serverTimezone=Asia/Shanghai
+      username: ${DB_MASTER_USERNAME}
+      password: ${DB_MASTER_PASSWORD}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      # HikariCP连接池优化配置
+      hikari:
+        maximum-pool-size: 30
+        minimum-idle: 10
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        leak-detection-threshold: 60000
+        connection-test-query: SELECT 1
+    # 从库配置（读操作）
+    slave:
+      url: jdbc:mysql://${DB_SLAVE_HOST:localhost}:${DB_SLAVE_PORT:3306}/${DB_NAME:rag_knowledge_base}?useUnicode=true&characterEncoding=utf8&useSSL=true&serverTimezone=Asia/Shanghai
+      username: ${DB_SLAVE_USERNAME}
+      password: ${DB_SLAVE_PASSWORD}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      # HikariCP连接池优化配置
+      hikari:
+        maximum-pool-size: 50
+        minimum-idle: 20
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        leak-detection-threshold: 60000
+        connection-test-query: SELECT 1
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate  # 生产环境使用validate
+    show-sql: false  # 生产环境关闭SQL日志
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 20
+    max-connections: 8192
+    accept-count: 100
+    connection-timeout: 20000
+
+# Milvus配置
+milvus:
+  host: ${MILVUS_HOST:localhost}
+  port: ${MILVUS_PORT:19530}
+  collection:
+    name: knowledge_base
+    dimension: 1024
+
+# LangChain4j配置
+langchain4j:
+  community:
+    dashscope:
+      chat-model:
+        model-name: qwen-max-latest
+        temperature: 0.7
+        max-tokens: 2000
+        api-key: ${DASHSCOPE_CHAT_API_KEY}
+      streaming-chat-model:
+        model-name: qwen-max-latest
+        temperature: 0.7
+        max-tokens: 2000
+        api-key: ${DASHSCOPE_STREAMING_API_KEY}
+      embedding-model:
+        model-name: text-embedding-v4
+        api-key: ${DASHSCOPE_EMBEDDING_API_KEY}
+
+# 文档处理配置
+document:
+  chunk:
+    # 默认配置
+    size: 1000
+    overlap: 200
+    # 不同文档类型的配置
+    pdf:
+      size: 800
+      overlap: 150
+    markdown:
+      size: 1200
+      overlap: 200
+    docx:
+      size: 1000
+      overlap: 200
+    txt:
+      size: 1000
+      overlap: 200
+    epub:
+      size: 1000
+      overlap: 200
+  # 启用智能分块
+  intelligent-chunking: true
+  supported-formats: pdf,docx,txt,md,epub
+
+# 检索配置
+retrieval:
+  top-k: 10
+  score-threshold: 0.7
+
+# 日志配置
+logging:
+  level:
+    com.aliyun.rag: INFO
+    dev.langchain4j: WARN
+    org.springframework: WARN
+    org.hibernate: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/rag-knowledge-base.log
+    max-size: 100MB
+    max-history: 30
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  # 缓存配置
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000  # 1小时
+      cache-null-values: false
+
+# JWT配置
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 7200000  # 2小时
+  refresh-expiration: 604800000  # 7天
+  token-prefix: "Bearer "
+  header-name: "Authorization"
+  issuer: "RAG-Knowledge-Base"
+
+# CORS配置
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://yourdomain.com}
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true
+  max-age: 3600
+
+# 异步线程池配置（生产环境优化）
+async:
+  thread-pool:
+    file-process:
+      core-pool-size: 10
+      max-pool-size: 40
+      queue-capacity: 200
+      thread-name-prefix: "FileProcess-"
+      keep-alive-seconds: 300
+    document-parse:
+      core-pool-size: 6
+      max-pool-size: 20
+      queue-capacity: 100
+      thread-name-prefix: "DocParse-"
+      keep-alive-seconds: 300
+    vector-process:
+      core-pool-size: 4
+      max-pool-size: 16
+      queue-capacity: 60
+      thread-name-prefix: "VectorProcess-"
+      keep-alive-seconds: 600
+    async-task:
+      core-pool-size: 4
+      max-pool-size: 10
+      queue-capacity: 40
+      thread-name-prefix: "AsyncTask-"
+      keep-alive-seconds: 60
+    trace-process:
+      core-pool-size: 8
+      max-pool-size: 28
+      queue-capacity: 200
+      thread-name-prefix: "TraceProcess-"
+      keep-alive-seconds: 600

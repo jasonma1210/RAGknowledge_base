@@ -1,6 +1,5 @@
 package com.aliyun.rag.interceptor;
 
-import com.aliyun.rag.config.TracingConfig;
 import com.aliyun.rag.service.MetricsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -86,7 +85,7 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         
         // 基本请求信息
         entry.setTimestamp(LocalDateTime.now().format(FORMATTER));
-        entry.setTraceId(TracingConfig.getCurrentTraceId());
+        entry.setTraceId(generateTraceId());
         entry.setMethod(request.getMethod());
         entry.setUrl(request.getRequestURL().toString());
         entry.setUri(request.getRequestURI());
@@ -266,5 +265,12 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
         public Map<String, String> getHeaders() { return headers; }
         public void setHeaders(Map<String, String> headers) { this.headers = headers; }
+    }
+    
+    /**
+     * 生成追踪ID
+     */
+    private String generateTraceId() {
+        return java.util.UUID.randomUUID().toString().replace("-", "");
     }
 }
