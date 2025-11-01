@@ -23,7 +23,7 @@
             <el-icon><Search /></el-icon>
             搜索
           </el-button>
-          <el-button @click="resetSearch" class="reset-button">
+          <el-button type="info" @click="resetSearch" class="reset-button">
             <el-icon><Refresh /></el-icon>
             重置
           </el-button>
@@ -34,13 +34,13 @@
     <el-card class="toolbar-card modern-card">
       <div class="toolbar">
         <div class="toolbar-left">
-          <el-button type="primary" @click="showUploadDialog" class="action-button">
+          <el-button type="success" @click="showUploadDialog" class="action-button">
             <el-icon><Upload /></el-icon>
             上传文档
           </el-button>
         </div>
         <div class="toolbar-right">
-          <el-button @click="refreshDocuments" class="refresh-button">
+          <el-button type="info" @click="refreshDocuments" class="refresh-button">
             <el-icon><Refresh /></el-icon>
             刷新
           </el-button>
@@ -91,14 +91,16 @@
         </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="scope">
-            <el-button size="small" @click="downloadDocument(scope.row)" class="table-action-button download-button">
-              <el-icon><Download /></el-icon>
-              下载
-            </el-button>
-            <el-button size="small" type="danger" @click="deleteDocument(scope.row)" class="table-action-button delete-button">
-              <el-icon><Delete /></el-icon>
-              删除
-            </el-button>
+            <div class="table-actions">
+              <el-button size="small" @click="downloadDocument(scope.row)" class="table-action-button download-button">
+                <el-icon><Download /></el-icon>
+                下载
+              </el-button>
+              <el-button size="small" type="danger" @click="deleteDocument(scope.row)" class="table-action-button delete-button">
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -381,17 +383,56 @@ const uploadDocument = async () => {
 // 下载文档
 const downloadDocument = async (row: any) => {
   try {
+    // 显示下载中状态
+    const loading = ElMessage({
+      message: '正在下载文档...',
+      type: 'info',
+      duration: 0
+    })
+    
     const blob = await documentAPI.downloadDocument(row.id)
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = row.fileName
-    link.click()
-    window.URL.revokeObjectURL(url)
-    ElMessage.success('文档下载成功')
+    
+    // 关闭加载消息
+    loading.close()
+    
+    // 检查blob是否有效
+    if (blob && blob.size > 0) {
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      
+      // 使用文档标题作为文件名，如果没有则使用fileName
+      const filename = row.title || row.fileName || 'document'
+      // 添加文件扩展名
+      const extension = row.fileType ? `.${row.fileType.toLowerCase()}` : ''
+      link.download = `${filename}${extension}`
+      
+      // 触发下载
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      ElMessage.success('文档下载成功')
+    } else {
+      throw new Error('下载的文件为空')
+    }
   } catch (error: any) {
     console.error('文档下载失败:', error)
-    ElMessage.error('文档下载失败: ' + (error.message || '网络错误'))
+    
+    // 根据错误类型显示不同的消息
+    let errorMessage = '文档下载失败'
+    if (error.message) {
+      if (error.message.includes('七牛云配置无效')) {
+        errorMessage = '文件下载服务暂时不可用，请联系管理员'
+      } else if (error.message.includes('文档不存在')) {
+        errorMessage = '文档不存在或已被删除'
+      } else {
+        errorMessage = `文档下载失败: ${error.message}`
+      }
+    }
+    
+    ElMessage.error(errorMessage)
   }
 }
 
@@ -569,10 +610,19 @@ onMounted(() => {
   margin: 0;
 }
 
+.table-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
 .table-action-button {
   padding: 6px 10px;
   font-size: 12px;
-  margin-right: 6px;
+  margin: 0;
+  flex-shrink: 0;
+  min-width: 60px;
 }
 
 .download-button {
