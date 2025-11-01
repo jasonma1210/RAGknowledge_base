@@ -105,7 +105,7 @@
           <div class="result-header">
             <h4 class="result-title">{{ (result as any).title }}</h4>
             <div class="result-tags">
-              <el-tag size="small" type="primary" class="source-tag">
+              <el-tag v-if="(result as any).source && (result as any).source !== 'Unknown'" size="small" type="primary" class="source-tag">
                 {{ (result as any).source }}
               </el-tag>
               <el-tag size="small" type="success" class="score-tag">

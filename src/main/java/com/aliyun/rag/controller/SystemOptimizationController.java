@@ -25,7 +25,7 @@ import java.util.Map;
  * @since 2025-01-18
  */
 @RestController
-@RequestMapping("/system")
+@RequestMapping("/api/system")
 public class SystemOptimizationController {
 
     private static final Logger log = LoggerFactory.getLogger(SystemOptimizationController.class);

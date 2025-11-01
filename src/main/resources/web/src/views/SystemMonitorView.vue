@@ -9,10 +9,12 @@
       <div class="card-header">
         <h3 class="card-title">系统健康状态</h3>
         <el-button 
+          type="info"
           @click="fetchHealth" 
           size="small" 
           class="refresh-button"
           :loading="healthLoading"
+          round
         >
           <el-icon><Refresh /></el-icon>
           刷新
@@ -88,9 +90,11 @@
             />
           </el-select>
           <el-button 
+            type="primary"
             @click="fetchMetrics" 
             class="refresh-button"
             :loading="metricsLoading"
+            round
           >
             <el-icon><Refresh /></el-icon>
             刷新
@@ -122,9 +126,11 @@
         <h3 class="card-title">系统信息</h3>
         <div class="card-header-right">
           <el-button 
+            type="success"
             @click="fetchSystemInfo" 
             class="refresh-button"
             :loading="infoLoading"
+            round
           >
             <el-icon><Refresh /></el-icon>
             刷新

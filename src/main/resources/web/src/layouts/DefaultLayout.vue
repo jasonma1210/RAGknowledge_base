@@ -72,9 +72,9 @@
               <el-icon><Search /></el-icon>
               <template #title>知识搜索</template>
             </el-menu-item>
-            <el-menu-item index="/ask">
-              <el-icon><ChatDotRound /></el-icon>
-              <template #title>AI问答</template>
+            <el-menu-item index="/conversation">
+              <el-icon><ChatLineRound /></el-icon>
+              <template #title>AI对话</template>
             </el-menu-item>
             <el-menu-item index="/vector-data">
               <el-icon><DataLine /></el-icon>
@@ -107,6 +107,7 @@ import {
   DataLine, 
   Monitor, 
   ChatDotRound,
+  ChatLineRound,
   User,
   SwitchButton,
   ArrowDown,

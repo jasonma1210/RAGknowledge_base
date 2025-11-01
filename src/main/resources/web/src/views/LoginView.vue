@@ -16,6 +16,7 @@
             @click="switchToLogin"
             size="large"
             round
+            :type="activeTab === 'login' ? 'primary' : 'info'"
           >
             登录
           </el-button>
@@ -24,6 +25,7 @@
             @click="switchToRegister"
             size="large"
             round
+            :type="activeTab === 'register' ? 'primary' : 'info'"
           >
             注册
           </el-button>
@@ -71,6 +73,7 @@
                 round
                 block
               >
+                <el-icon><User /></el-icon>
                 登录
               </el-button>
             </el-form-item>
@@ -144,6 +147,7 @@
                 round
                 block
               >
+                <el-icon><UserFilled /></el-icon>
                 注册
               </el-button>
             </el-form-item>

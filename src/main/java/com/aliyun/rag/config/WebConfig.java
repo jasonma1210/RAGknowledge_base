@@ -40,11 +40,11 @@ public class WebConfig implements WebMvcConfigurer {
     
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 注册限流拦截器（最先执行）
-        registry.addInterceptor(rateLimitInterceptor)
-                .addPathPatterns("/**")
-                .excludePathPatterns("/", "/index.html", "/static/**", "/assets/**", "/favicon.ico")
-                .excludePathPatterns("/actuator/health"); // 排除健康检查
+        // 限流拦截器已关闭
+        // registry.addInterceptor(rateLimitInterceptor)
+        //         .addPathPatterns("/**")
+        //         .excludePathPatterns("/", "/index.html", "/static/**", "/assets/**", "/favicon.ico")
+        //         .excludePathPatterns("/actuator/health"); // 排除健康检查
         
         // 注册访问日志拦截器，记录所有请求的访问日志
         registry.addInterceptor(accessLogInterceptor)

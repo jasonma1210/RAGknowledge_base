@@ -55,4 +55,13 @@ public interface DocumentMilvusMappingRepository extends JpaRepository<DocumentM
      * @return 映射记录列表
      */
     List<DocumentMilvusMapping> findByUserIdAndIsDeleted(Long userId, Integer isDeleted);
+
+    /**
+     * 统计用户未删除的向量总数
+     *
+     * @param userId 用户ID
+     * @param isDeleted 是否删除
+     * @return 向量总数
+     */
+    long countByUserIdAndIsDeleted(Long userId, Integer isDeleted);
 }

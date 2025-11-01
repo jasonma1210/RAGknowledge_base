@@ -82,6 +82,7 @@ export interface ApiResponse<T = any> {
   code: number
   data: T
   timestamp: string
+  askResponse?: any // 扩展字段用于创建会话时的自动问答响应
 }
 
 // 认证相关API
@@ -269,12 +270,32 @@ class DocumentAPI {
   // 下载文档
   async downloadDocument(documentId: string): Promise<Blob> {
     try {
-      const response = await apiClient.get(`/documents/${documentId}/download`, {
+      // 直接使用axios实例，绕过响应拦截器
+      const token = localStorage.getItem('token')
+      const response = await axios.get(`/api/documents/${documentId}/download`, {
         responseType: 'blob',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
       })
+      
+      // 检查响应是否为错误（JSON格式）
+      const contentType = response.headers?.['content-type']
+      if (contentType && contentType.includes('application/json')) {
+        // 如果是JSON响应，说明是错误信息
+        const errorText = await response.data.text()
+        const errorData = JSON.parse(errorText)
+        throw new Error(errorData.data || errorData.message || '下载失败')
+      }
+      
       return response.data
     } catch (error: any) {
-      throw error
+      // 如果已经是解析过的错误，直接抛出
+      if (error.message) {
+        throw error
+      }
+      // 否则包装成标准错误
+      throw new Error(error.message || '网络错误')
     }
   }
 
@@ -328,6 +349,62 @@ class SearchAPI {
       throw error
     }
   }
+
+  // 流式AI问答
+  async askStreaming(question: string, searchType: string = 'SEMANTIC', maxResults: number = 10, minScore: number = 0.7, onToken?: (token: string) => void, onComplete?: () => void, onError?: (error: any) => void): Promise<any> {
+    try {
+      const requestData = {
+        question,
+        searchType,
+        maxResults,
+        minScore
+      }
+
+      const response = await fetch('/api/search/ask/streaming', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(requestData)
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      if (!response.body) {
+        throw new Error('ReadableStream not supported')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let fullAnswer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const data = line.substring(5)
+            fullAnswer += data
+            if (onToken) onToken(data)
+          } else if (line.startsWith('event:') && line.substring(6) === 'complete') {
+            if (onComplete) onComplete()
+          }
+        }
+      }
+
+      return { answer: fullAnswer }
+    } catch (error: any) {
+      if (onError) onError(error)
+      throw error
+    }
+  }
 }
 
 // 向量数据API
@@ -359,6 +436,215 @@ class VectorDataAPI {
       const response: any = await apiClient.delete<ApiResponse<any>>(`/vector-data/${vectorId}`)
       return response
     } catch (error: any) {
+      throw error
+    }
+  }
+}
+
+// 对话管理API
+class ConversationAPI {
+  // 获取会话列表
+  async getConversations(page: number = 0, size: number = 20): Promise<ApiResponse<any>> {
+    try {
+      const params = { page, size }
+      const response: any = await apiClient.get<ApiResponse<any>>('/conversation/list', { params })
+      return response
+    } catch (error: any) {
+      throw error
+    }
+  }
+
+  // 创建新会话
+  async createConversation(): Promise<ApiResponse<any>> {
+    try {
+      const response: any = await apiClient.post<ApiResponse<any>>('/conversation/create', {})
+      return response
+    } catch (error: any) {
+      throw error
+    }
+  }
+
+  // 获取会话详情
+  async getConversation(conversationId: string): Promise<ApiResponse<any>> {
+    try {
+      const response: any = await apiClient.get<ApiResponse<any>>(`/conversation/${conversationId}`)
+      return response
+    } catch (error: any) {
+      throw error
+    }
+  }
+
+  // AI问答
+  async ask(conversationId: string, question: string, searchType: string = 'SEMANTIC', maxResults: number = 10, minScore: number = 0.7, enableContext: boolean = true, contextMessageCount: number = 10): Promise<ApiResponse<any>> {
+    try {
+      const data = {
+        conversationId,
+        question,
+        searchType,
+        maxResults,
+        minScore,
+        enableContext,
+        contextMessageCount
+      }
+      const response: any = await apiClient.post<ApiResponse<any>>('/conversation/ask', data)
+      return response
+    } catch (error: any) {
+      throw error
+    }
+  }
+
+  // 流式AI问答
+  async askStreaming(question: string, searchType: string = 'SEMANTIC', maxResults: number = 10, minScore: number = 0.7, onToken?: (token: string) => void, onComplete?: () => void, onError?: (error: any) => void): Promise<any> {
+    try {
+      const requestData = {
+        question,
+        searchType,
+        maxResults,
+        minScore
+      }
+
+      const response = await fetch('/api/search/ask/streaming', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(requestData)
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      if (!response.body) {
+        throw new Error('ReadableStream not supported')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let fullAnswer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const data = line.substring(5)
+            fullAnswer += data
+            if (onToken) onToken(data)
+          } else if (line.startsWith('event:') && line.substring(6) === 'complete') {
+            if (onComplete) onComplete()
+          }
+        }
+      }
+
+      return { answer: fullAnswer }
+    } catch (error: any) {
+      if (onError) onError(error)
+      throw error
+    }
+  }
+
+  // 获取会话消息历史
+  async getMessages(conversationId: string, page: number = 0, size: number = 20): Promise<ApiResponse<any>> {
+    try {
+      const params = { page, size }
+      const response: any = await apiClient.get<ApiResponse<any>>(`/conversation/${conversationId}/messages`, { params })
+      return response
+    } catch (error: any) {
+      throw error
+    }
+  }
+
+  // 删除会话
+  async deleteConversation(conversationId: string): Promise<ApiResponse<any>> {
+    try {
+      const response: any = await apiClient.delete<ApiResponse<any>>(`/conversation/${conversationId}`)
+      return response
+    } catch (error: any) {
+      throw error
+    }
+  }
+
+  // 更新会话标题
+  async updateConversationTitle(conversationId: string, title: string): Promise<ApiResponse<any>> {
+    try {
+      const response: any = await apiClient.put<ApiResponse<any>>(`/conversation/${conversationId}`, { title })
+      return response
+    } catch (error: any) {
+      throw error
+    }
+  }
+
+  // 获取会话统计信息
+  async getStats(): Promise<ApiResponse<any>> {
+    try {
+      const response: any = await apiClient.get<ApiResponse<any>>('/conversation/stats')
+      return response
+    } catch (error: any) {
+      throw error
+    }
+  }
+
+  // 会话流式AI问答
+  async askConversationStreaming(conversationId: string, question: string, searchType: string = 'SEMANTIC', maxResults: number = 10, minScore: number = 0.7, enableContext: boolean = true, contextMessageCount: number = 10, onToken?: (token: string) => void, onComplete?: () => void, onError?: (error: any) => void): Promise<any> {
+    try {
+      const requestData = {
+        conversationId: conversationId ? parseInt(conversationId) : null,
+        question,
+        searchType,
+        maxResults,
+        minScore,
+        enableContext,
+        contextMessageCount
+      }
+
+      const response = await fetch('/api/conversation/ask/streaming', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(requestData)
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      if (!response.body) {
+        throw new Error('ReadableStream not supported')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let fullAnswer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const data = line.substring(5)
+            fullAnswer += data
+            if (onToken) onToken(data)
+          } else if (line.startsWith('event:') && line.substring(6) === 'complete') {
+            if (onComplete) onComplete()
+          }
+        }
+      }
+
+      return { answer: fullAnswer }
+    } catch (error: any) {
+      if (onError) onError(error)
       throw error
     }
   }
@@ -456,6 +742,7 @@ export const authAPI = new AuthAPI()
 export const documentAPI = new DocumentAPI()
 export const searchAPI = new SearchAPI()
 export const vectorDataAPI = new VectorDataAPI()
+export const conversationAPI = new ConversationAPI()
 export const systemAPI = new SystemAPI()
 export const healthAPI = new HealthAPI()
 
@@ -465,6 +752,7 @@ export default {
   document: documentAPI,
   search: searchAPI,
   vectorData: vectorDataAPI,
+  conversation: conversationAPI,
   system: systemAPI,
   health: healthAPI,
   client: apiClient,

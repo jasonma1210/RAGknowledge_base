@@ -59,18 +59,45 @@
                 <el-icon size="24" color="var(--color-warning)"><Histogram /></el-icon>
               </div>
               <div class="stat-info">
-                <div class="stat-value">{{ stats.storageSize || '-' }}</div>
-                <div class="stat-label">存储大小</div>
+                <div class="stat-value">{{ stats.formattedVectorStorageUsed || '0 B' }}</div>
+                <div class="stat-label">向量存储使用</div>
               </div>
             </div>
           </el-col>
         </el-row>
         
         <el-row :gutter="20" style="margin-top: 20px;">
-          <el-col :span="12">
+          <el-col :span="8">
             <div class="stat-item horizontal">
               <div class="stat-label">集合名称</div>
               <div class="stat-value">{{ stats.collectionName || '-' }}</div>
+            </div>
+          </el-col>
+          <el-col :span="8">
+            <div class="stat-item horizontal">
+              <div class="stat-label">向量存储配额</div>
+              <div class="stat-value">{{ stats.formattedVectorStorageQuota || '未设置' }}</div>
+            </div>
+          </el-col>
+          <el-col :span="8">
+            <div class="stat-item horizontal">
+              <div class="stat-label">存储使用率</div>
+              <div class="stat-value">
+                <el-progress 
+                  :percentage="stats.vectorStorageUsagePercentage || 0" 
+                  :color="getProgressColor(stats.vectorStorageUsagePercentage || 0)"
+                  :stroke-width="8"
+                />
+              </div>
+            </div>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20" style="margin-top: 20px;">
+          <el-col :span="12">
+            <div class="stat-item horizontal">
+              <div class="stat-label">剩余向量存储</div>
+              <div class="stat-value">{{ stats.formattedVectorStorageRemaining || '0 B' }}</div>
             </div>
           </el-col>
           <el-col :span="12">
@@ -170,7 +197,7 @@ const vectorData = ref([])
 
 // 分页信息
 const pagination = reactive({
-  page: 0,
+  page: 1,  // 前端显示从1开始
   size: 10,
   total: 0
 })
@@ -198,20 +225,42 @@ const fetchStats = async () => {
 const fetchVectorData = async () => {
   dataLoading.value = true
   try {
+    // 边界检查
+    if (pagination.page < 1) {
+      pagination.page = 1
+    }
+    
+    // 转换为后端期望的页码（从0开始）
+    const backendPage = pagination.page - 1
+    
     const response = await vectorDataAPI.getVectorData(
-      pagination.page,
-      pagination.size
+      backendPage,
+      pagination.size,
+      'createTime',
+      'desc'
     )
     if (response.success) {
       // 适配新的响应数据结构
-      vectorData.value = response.data.data
-      pagination.total = response.data.total
+      vectorData.value = response.data.data || []
+      pagination.total = response.data.total || 0
+      
+      // 如果当前页没有数据且不是第一页，自动跳转到最后一页
+      if (vectorData.value.length === 0 && pagination.page > 1) {
+        const lastPage = Math.max(1, Math.ceil(pagination.total / pagination.size))
+        pagination.page = lastPage
+        // 延迟重新获取，避免递归调用
+        setTimeout(() => {
+          fetchVectorData()
+        }, 100)
+      }
     } else {
       ElMessage.error(response.data || '获取向量数据失败')
+      vectorData.value = []
     }
   } catch (error: any) {
     console.error('获取向量数据失败:', error)
     ElMessage.error('获取向量数据失败: ' + (error.message || '网络错误'))
+    vectorData.value = []
   } finally {
     dataLoading.value = false
   }
@@ -220,12 +269,26 @@ const fetchVectorData = async () => {
 // 处理分页大小变化
 const handleSizeChange = (val: number) => {
   pagination.size = val
+  
+  // 重新计算当前页，确保不超出范围
+  const maxPage = Math.max(1, Math.ceil(pagination.total / val))
+  if (pagination.page > maxPage) {
+    pagination.page = maxPage
+  }
+  
   fetchVectorData()
 }
 
 // 处理当前页变化
 const handleCurrentChange = (val: number) => {
-  pagination.page = val - 1
+  // 边界检查
+  const maxPage = Math.max(1, Math.ceil(pagination.total / pagination.size))
+  if (val < 1 || val > maxPage) {
+    ElMessage.warning(`页码超出范围，请输入1-${maxPage}之间的页码`)
+    return
+  }
+  
+  pagination.page = val  // Element Plus分页组件的页码是从1开始的
   fetchVectorData()
 }
 
@@ -239,6 +302,13 @@ const formatTime = (time: string) => {
 const truncateContent = (content: string) => {
   if (!content) return '-'
   return content.length > 100 ? content.substring(0, 100) + '...' : content
+}
+
+// 获取进度条颜色
+const getProgressColor = (percentage: number) => {
+  if (percentage < 50) return '#67c23a' // 绿色
+  if (percentage < 80) return '#e6a23c' // 橙色
+  return '#f56c6c' // 红色
 }
 
 onMounted(() => {

@@ -327,6 +327,66 @@ public class RAGService {
     }
 
     /**
+     * 基于上下文生成回答（支持对话历史）
+     */
+    public String generateAnswerWithContext(String question, List<SearchResult> searchResults, List<ChatMessage> contextMessages) {
+        try {
+            if (searchResults.isEmpty()) {
+                return "抱歉，没有找到相关的知识库内容来回答您的问题。";
+            }
+
+            // 构建知识库上下文
+            StringBuilder knowledgeContext = new StringBuilder();
+            for (SearchResult result : searchResults) {
+                knowledgeContext.append("【").append(result.getTitle()).append("】")
+                        .append(result.getContent()).append("\n\n");
+            }
+
+            // 构建对话历史上下文
+            StringBuilder conversationContext = new StringBuilder();
+            if (contextMessages != null && !contextMessages.isEmpty()) {
+                conversationContext.append("对话历史：\n");
+                for (ChatMessage message : contextMessages) {
+                    if (message instanceof dev.langchain4j.data.message.UserMessage userMessage) {
+                        // UserMessage需要通过其他方式获取内容
+                        conversationContext.append("用户：").append(extractMessageText(message)).append("\n");
+                    } else if (message instanceof dev.langchain4j.data.message.AiMessage aiMessage) {
+                        conversationContext.append("助手：").append(aiMessage.text()).append("\n");
+                    }
+                }
+                conversationContext.append("\n");
+            }
+
+            // 构建提示词
+            String prompt = String.format(
+                    """
+                    基于以下知识库内容和对话历史，请回答用户的问题：
+                    
+                    知识库内容：
+                    %s
+                    
+                    %s用户问题：%s
+                    
+                    请提供准确、简洁的回答，并引用相关的知识库内容。如果对话历史中有相关信息，请考虑上下文连贯性。
+                    """,
+                    knowledgeContext,
+                    conversationContext,
+                    question
+            );
+
+            // 生成回答
+            String answer = qwenChatModel.chat(prompt);
+
+            log.info("基于上下文的回答生成完成: {}", question);
+            return answer;
+
+        } catch (Exception e) {
+            log.error("基于上下文的回答生成失败: {}", e.getMessage(), e);
+            throw new RuntimeException("基于上下文的回答生成失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 问答接口
      */
     public Map<String, Object> askQuestion(String question, SearchRequest searchRequest, User user) {
@@ -405,6 +465,84 @@ public class RAGService {
 
         } catch (Exception e) {
             log.error("流式问答失败: {}", e.getMessage(), e);
+            handler.onError(e);
+        }
+    }
+
+    /**
+     * 带上下文的流式问答
+     *
+     * @param question 用户问题
+     * @param searchResults 搜索结果
+     * @param contextMessages 上下文消息
+     * @param user 用户信息
+     * @param handler 流式响应处理器
+     */
+    public void askQuestionStreamingWithContext(String question, List<SearchResult> searchResults, List<ChatMessage> contextMessages, User user, dev.langchain4j.model.StreamingResponseHandler<AiMessage> handler) {
+        try {
+            // 构建上下文
+            StringBuilder context = new StringBuilder();
+            
+            // 添加知识库搜索结果
+            if (searchResults != null && !searchResults.isEmpty()) {
+                context.append("知识库内容：\n");
+                for (int i = 0; i < searchResults.size(); i++) {
+                    SearchResult result = searchResults.get(i);
+                    context.append("【").append(result.getTitle()).append("】")
+                            .append(result.getContent()).append("\n\n");
+                }
+            }
+            
+            // 添加对话上下文
+            if (contextMessages != null && !contextMessages.isEmpty()) {
+                context.append("\n对话历史：\n");
+                for (ChatMessage msg : contextMessages) {
+                    if (msg instanceof UserMessage) {
+                        context.append("用户：").append(((UserMessage) msg).contents()).append("\n");
+                    } else if (msg instanceof AiMessage) {
+                        context.append("助手：").append(((AiMessage) msg).text()).append("\n");
+                    }
+                }
+            }
+
+            // 构建提示词
+            String prompt = String.format(
+                    """
+                    基于以下知识库内容和对话历史，请回答用户的问题：
+                    
+                    %s
+                    
+                    用户问题：%s
+                    
+                    请提供准确、简洁的回答，并引用相关的知识库内容。
+                    """,
+                    context,
+                    question
+            );
+
+            // 使用流式模型生成回答
+            log.info("开始带上下文的流式生成回答: {}", question);
+            
+            // 使用流式处理方式，适配dev.langchain4j.model.StreamingResponseHandler接口
+            qwenStreamingChatModel.chat(prompt, new dev.langchain4j.model.chat.response.StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String token) {
+                    handler.onNext(token);
+                }
+
+                @Override
+                public void onCompleteResponse(ChatResponse response) {
+                    handler.onComplete(new Response<>(response.aiMessage()));
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    handler.onError(throwable);
+                }
+            });
+
+        } catch (Exception e) {
+            log.error("带上下文的流式问答失败: {}", e.getMessage(), e);
             handler.onError(e);
         }
     }
@@ -655,6 +793,32 @@ public class RAGService {
             return "";
         }
         return fileName.substring(fileName.lastIndexOf('.') + 1);
+    }
+
+    /**
+     * 提取消息文本内容
+     */
+    private String extractMessageText(ChatMessage message) {
+        if (message instanceof dev.langchain4j.data.message.UserMessage userMessage) {
+            // 通过反射或者其他方式获取UserMessage的内容
+            try {
+                // 尝试使用toString()方法并解析内容
+                String messageStr = userMessage.toString();
+                if (messageStr.contains("text=")) {
+                    int start = messageStr.indexOf("text=") + 5;
+                    int end = messageStr.indexOf(",", start);
+                    if (end == -1) end = messageStr.indexOf("}", start);
+                    return messageStr.substring(start, end).replace("\"", "");
+                }
+                return messageStr;
+            } catch (Exception e) {
+                log.warn("提取UserMessage内容失败: {}", e.getMessage());
+                return message.toString();
+            }
+        } else if (message instanceof dev.langchain4j.data.message.AiMessage aiMessage) {
+            return aiMessage.text();
+        }
+        return message.toString();
     }
 
     /**

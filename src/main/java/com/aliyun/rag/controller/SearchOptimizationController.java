@@ -25,7 +25,7 @@ import java.util.Map;
  * @since 2025-01-18
  */
 @RestController
-@RequestMapping("/search")
+@RequestMapping("/api/search")
 public class SearchOptimizationController {
 
     private static final Logger log = LoggerFactory.getLogger(SearchOptimizationController.class);

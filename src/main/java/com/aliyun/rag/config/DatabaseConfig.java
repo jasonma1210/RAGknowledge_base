@@ -37,7 +37,7 @@ public class DatabaseConfig {
      */
     @Bean
     @Primary
-    @ConfigurationProperties("spring.datasource.master.hikari")
+    @ConfigurationProperties("spring.datasource.master")
     public DataSource masterDataSource() {
         return DataSourceBuilder.create().type(HikariDataSource.class).build();
     }
@@ -46,7 +46,7 @@ public class DatabaseConfig {
      * 从数据库数据源（读操作）
      */
     @Bean
-    @ConfigurationProperties("spring.datasource.slave.hikari")
+    @ConfigurationProperties("spring.datasource.slave")
     public DataSource slaveDataSource() {
         return DataSourceBuilder.create().type(HikariDataSource.class).build();
     }

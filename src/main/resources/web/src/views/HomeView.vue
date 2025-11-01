@@ -84,7 +84,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { Document, Search, ChatDotRound, DataLine, Monitor, User } from '@element-plus/icons-vue'
+import { Document, Search, ChatDotRound, ChatLineRound, DataLine, Monitor, User } from '@element-plus/icons-vue'
 
 const router = useRouter()
 
@@ -96,8 +96,8 @@ const goToSearch = () => {
   router.push('/search')
 }
 
-const goToAsk = () => {
-  router.push('/ask')
+const goToConversation = () => {
+  router.push('/conversation')
 }
 
 const goToVectorData = () => {

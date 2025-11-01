@@ -55,11 +55,28 @@ public class QiniuUploadService {
 
     @PostConstruct
     public void init() {
-        // 初始化七牛云配置
-        Configuration cfg = new Configuration(Region.autoRegion());
-        uploadManager = new UploadManager(cfg);
-        auth = Auth.create(accessKey, secretKey);
-        bucketManager = new BucketManager(auth, cfg);
+        if (isConfigValid()) {
+            Configuration cfg = new Configuration(Region.region0());
+            uploadManager = new UploadManager(cfg);
+            auth = Auth.create(accessKey, secretKey);
+            bucketManager = new BucketManager(auth, cfg);
+            log.info("七牛云服务初始化成功");
+        } else {
+            log.warn("七牛云配置无效，服务将不可用");
+        }
+    }
+    
+    /**
+     * 验证配置是否有效
+     */
+    private boolean isConfigValid() {
+        return accessKey != null && !accessKey.trim().isEmpty() &&
+               secretKey != null && !secretKey.trim().isEmpty() &&
+               bucket != null && !bucket.trim().isEmpty() &&
+               domain != null && !domain.trim().isEmpty() &&
+               !accessKey.equals("123") &&
+               !secretKey.equals("321") &&
+               !bucket.equals("3333");
     }
 
     /**
@@ -72,6 +89,12 @@ public class QiniuUploadService {
      * @throws RuntimeException 上传失败时抛出异常
      */
     public String uploadFile(MultipartFile file, User user, String fileName) {
+        // 验证配置是否有效
+        if (!isConfigValid()) {
+            log.error("七牛云配置无效，无法上传文件");
+            throw new RuntimeException("七牛云服务配置无效，请联系管理员");
+        }
+        
         try {
             // 如果文件名为空，则生成唯一文件名
             if (fileName == null || fileName.trim().isEmpty()) {
@@ -146,12 +169,17 @@ public class QiniuUploadService {
     }
 
     /**
-     * 从七牛云删除文件
+     * 删除七牛云文件
      *
      * @param fileKey 文件key
      * @throws RuntimeException 删除失败时抛出异常
      */
     public void deleteFile(String fileKey) {
+        if (!isConfigValid()) {
+            log.warn("七牛云配置无效，跳过文件删除: {}", fileKey);
+            return;
+        }
+        
         try {
             // 从URL中提取文件key（去掉域名部分）
             if (fileKey.startsWith(domain)) {
@@ -165,11 +193,11 @@ public class QiniuUploadService {
                 log.info("文件删除成功: {}", fileKey);
             } else {
                 log.error("文件删除失败: {}", response.error);
-                throw new RuntimeException("文件删除失败: " + response.error);
+                // 不抛出异常，避免影响主流程
             }
         } catch (QiniuException e) {
             log.error("七牛云删除异常: {}", e.getMessage(), e);
-            throw new RuntimeException("文件删除失败: " + e.getMessage(), e);
+            // 不抛出异常，避免影响主流程
         }
     }
     
@@ -181,36 +209,41 @@ public class QiniuUploadService {
      * @throws RuntimeException 下载失败时抛出异常
      */
     public byte[] downloadFile(String fileKey) {
+        if (!isConfigValid()) {
+            log.warn("七牛云配置无效，无法下载文件: {}", fileKey);
+            return null;
+        }
+        
         try {
             // 从URL中提取文件key（去掉域名部分）
             if (fileKey.startsWith(domain)) {
                 fileKey = fileKey.substring(domain.length() + 1);
             }
 
-            // 下载文件
+            // 检查文件是否存在
             com.qiniu.storage.model.FileInfo fileInfo = bucketManager.stat(bucket, fileKey);
             
-            if (fileInfo != null) {
-                // 获取文件下载URL（带过期时间）
-                String downloadUrl = auth.privateDownloadUrl(domain + "/" + fileKey, 3600); // 1小时过期
-                
-                // 下载文件内容
-                java.net.URL url = new java.net.URL(downloadUrl);
-                java.io.InputStream inputStream = url.openStream();
-                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    baos.write(buffer, 0, bytesRead);
-                }
-                
-                inputStream.close();
-                return baos.toByteArray();
-            } else {
-                log.error("文件不存在: {}", fileKey);
-                throw new RuntimeException("文件不存在: " + fileKey);
+            if (fileInfo == null) {
+                log.warn("文件不存在: {}", fileKey);
+                return null;
             }
+            
+            // 获取文件下载URL（带过期时间）
+            String downloadUrl = auth.privateDownloadUrl(domain + "/" + fileKey, 3600); // 1小时过期
+            
+            // 下载文件内容
+            java.net.URL url = new java.net.URL(downloadUrl);
+            java.io.InputStream inputStream = url.openStream();
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                baos.write(buffer, 0, bytesRead);
+            }
+            
+            inputStream.close();
+            return baos.toByteArray();
         } catch (QiniuException e) {
             log.error("七牛云查询文件信息异常: {}", e.getMessage(), e);
             throw new RuntimeException("文件下载失败: " + e.getMessage(), e);
@@ -231,5 +264,14 @@ public class QiniuUploadService {
             return null;
         }
         return fileName.substring(fileName.lastIndexOf('.') + 1);
+    }
+
+    /**
+     * 检查七牛云配置是否有效（公共方法）
+     *
+     * @return 配置是否有效
+     */
+    public boolean isConfigValidPublic() {
+        return isConfigValid();
     }
 }

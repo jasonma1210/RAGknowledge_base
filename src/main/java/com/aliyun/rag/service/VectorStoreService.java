@@ -6,8 +6,10 @@ import com.aliyun.rag.model.DocumentMilvusMapping;
 import com.aliyun.rag.model.PageResult;
 import com.aliyun.rag.model.SearchResult;
 import com.aliyun.rag.model.User;
+import com.aliyun.rag.model.UserFileRecord;
 import com.aliyun.rag.model.VectorData;
 import com.aliyun.rag.repository.DocumentMilvusMappingRepository;
+import com.aliyun.rag.repository.UserFileRecordRepository;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -50,13 +52,16 @@ public class VectorStoreService {
 
     private final EmbeddingModel embeddingModel;
     private final DocumentMilvusMappingRepository documentMilvusMappingRepository;
+    private final UserFileRecordRepository userFileRecordRepository;
     private final MilvusConfig milvusConfig;
 
     public VectorStoreService(EmbeddingModel embeddingModel,
                               DocumentMilvusMappingRepository documentMilvusMappingRepository,
+                              UserFileRecordRepository userFileRecordRepository,
                               MilvusConfig milvusConfig) {
         this.embeddingModel = embeddingModel;
         this.documentMilvusMappingRepository = documentMilvusMappingRepository;
+        this.userFileRecordRepository = userFileRecordRepository;
         this.milvusConfig = milvusConfig;
     }
 
@@ -454,42 +459,14 @@ public class VectorStoreService {
      * @param user 用户对象
      * @return 向量总数
      */
-    @Cacheable(value = "vectorCount", key = "#user.id + '_' + #user.username")
     public long getVectorCount(User user) {
         try {
             log.info("用户 {}({}) 正在获取向量总数", user.getUsername(), user.getId());
 
-            // 生成用户专属collection名称
-            String collectionName = user.getUsername() + "_" + user.getId();
+            // 实时查询数据库获取用户的向量总数，确保数据准确性
+            long count = documentMilvusMappingRepository.countByUserIdAndIsDeleted(user.getId(), 0);
 
-            // 创建Milvus客户端连接
-            ConnectParam connectParam = ConnectParam.newBuilder()
-                    .withHost(milvusConfig.getHost())
-                    .withPort(milvusConfig.getPort())
-                    .build();
-
-            MilvusServiceClient milvusClient = new MilvusServiceClient(connectParam);
-
-            // 检查collection是否存在
-            R<Boolean> hasCollectionResponse = milvusClient.hasCollection(HasCollectionParam.newBuilder()
-                    .withCollectionName(collectionName)
-                    .build());
-
-            if (!hasCollectionResponse.getData()) {
-                log.info("Collection {} 不存在，向量总数为0", collectionName);
-                milvusClient.close();
-                return 0;
-            }
-
-            // 获取collection统计信息
-            R<GetCollectionStatisticsResponse> response = milvusClient
-                    .getCollectionStatistics(GetCollectionStatisticsParam.newBuilder()
-                            .withCollectionName(collectionName)
-                            .build());
-
-            GetCollStatResponseWrapper wrapper = new GetCollStatResponseWrapper(response.getData());
-            long count = wrapper.getRowCount();
-
+            log.info("用户 {}({}) 向量总数: {} (实时数据库查询)", user.getUsername(), user.getId(), count);
             return count;
         } catch (Exception e) {
             log.error("用户 {}({}) 获取向量总数失败: {}", user.getUsername(), user.getId(), e.getMessage(), e);
@@ -532,17 +509,15 @@ public class VectorStoreService {
                 return new PageResult<>(new ArrayList<>(), page, size, 0);
             }
 
-            // 获取总向量数
-            R<GetCollectionStatisticsResponse> statsResponse = milvusClient
-                    .getCollectionStatistics(GetCollectionStatisticsParam.newBuilder()
-                            .withCollectionName(collectionName)
-                            .build());
+            // 实时查询数据库获取准确的向量总数
+            long totalCount = documentMilvusMappingRepository.countByUserIdAndIsDeleted(userId, 0);
+            
+            // 获取分页数据
+            List<DocumentMilvusMapping> allMappings = getUserMappingsFromCache(userId);
 
-            GetCollStatResponseWrapper statsWrapper = new GetCollStatResponseWrapper(statsResponse.getData());
-            long totalCount = statsWrapper.getRowCount();
-
-            // 计算偏移量
+            // 计算偏移量和限制
             int offset = page * size;
+            int limit = size;
 
             // 如果偏移量大于总数，返回空结果
             if (offset >= totalCount) {
@@ -550,47 +525,72 @@ public class VectorStoreService {
                 return new PageResult<>(new ArrayList<>(), page, size, totalCount);
             }
 
-            // 构建查询参数实现分页
+            // 使用更简单的方法：直接基于offset和limit分页查询，然后用数据库映射信息补充
             QueryParam queryParam = QueryParam.newBuilder()
                     .withCollectionName(collectionName)
                     .withOffset((long) offset)
                     .withLimit((long) size)
-                    .withOutFields(Arrays.asList("id", "text"))  // 只查询存在的字段
+                    .withOutFields(Arrays.asList("id", "text"))
                     .build();
 
             // 执行查询获取向量数据
             R<io.milvus.grpc.QueryResults> response = milvusClient.query(queryParam);
-            QueryResultsWrapper queryResultsWrapper = new QueryResultsWrapper(response.getData());
-
-            // 解析查询结果
+            
+            // 创建VectorData列表
             List<VectorData> vectorDataList = new ArrayList<>();
-            if (response.getStatus() == 0) { // 检查查询是否成功
+            if (response.getStatus() == 0 && response.getData() != null) { // 检查查询是否成功
+                QueryResultsWrapper queryResultsWrapper = new QueryResultsWrapper(response.getData());
+                
                 // 获取各字段的数据
                 List<?> ids = queryResultsWrapper.getFieldWrapper("id").getFieldData();
                 List<?> texts = queryResultsWrapper.getFieldWrapper("text").getFieldData();
-                // metadata存储在textField中，需要从文本中提取元数据信息
-
+                
                 // 构建VectorData对象列表
                 int resultCount = ids.size();
                 for (int i = 0; i < resultCount; i++) {
-                    VectorData vectorData = new VectorData();
-                    vectorData.setId(ids.get(i).toString());
+                    String milvusId = ids.get(i).toString();
                     String text = texts.size() > i ? texts.get(i).toString() : "";
+                    
+                    VectorData vectorData = new VectorData();
+                    vectorData.setId(milvusId);
                     vectorData.setText(text);
                     // 设置显示用的截断文本，不超过一行
                     String displayText = text.length() > 100 ? text.substring(0, 100) + "..." : text;
                     vectorData.setDisplayText(displayText);
-                    // 其他字段暂时留空，因为它们不在Milvus的直接字段中
-                    vectorData.setFileRecordId("");
-                    vectorData.setTitle("");
-                    vectorData.setFileType("");
-                    vectorData.setChunkIndex(0);
-                    vectorData.setTags("");
-                    vectorData.setCreateTime(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                    
+                    // 从数据库映射表中获取详细信息
+                    try {
+                        Optional<DocumentMilvusMapping> mappingOpt = documentMilvusMappingRepository.findByMilvusIdAndIsDeleted(milvusId, 0);
+                        if (mappingOpt.isPresent()) {
+                            DocumentMilvusMapping mapping = mappingOpt.get();
+                            vectorData.setFileRecordId(mapping.getFileRecordId().toString());
+                            vectorData.setChunkIndex(mapping.getVectorIndex());
+                            
+                            // 尝试获取文件信息
+                            try {
+                                Optional<UserFileRecord> fileRecordOpt = userFileRecordRepository.findByIdAndIsDeleted(mapping.getFileRecordId(), 0);
+                                if (fileRecordOpt.isPresent()) {
+                                    UserFileRecord fileRecord = fileRecordOpt.get();
+                                    vectorData.setTitle(fileRecord.getFileName());
+                                    vectorData.setFileType(fileRecord.getFileType());
+                                    vectorData.setTags(""); // UserFileRecord doesn't have tags field
+                                    vectorData.setCreateTime(fileRecord.getUploadTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                                }
+                            } catch (Exception e) {
+                                log.warn("获取文件信息失败: {}", e.getMessage());
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("获取向量映射信息失败: {}", e.getMessage());
+                    }
                     
                     vectorDataList.add(vectorData);
                 }
+            } else {
+                log.warn("Milvus查询失败或返回空结果，状态码: {}", response.getStatus());
             }
+
+            // vectorDataList已经在上面构建好了
 
             // 返回分页结果
             PageResult<VectorData> result = new PageResult<>(vectorDataList, page, size, totalCount);
@@ -614,12 +614,21 @@ public class VectorStoreService {
      * @param username 用户名
      * @return 向量统计信息
      */
-    @Cacheable(value = "userVectorStats", key = "#userId + '_' + #username")
     public Map<String, Object> getUserVectorStats(Long userId, String username) {
         try {
             log.info("用户 {}({}) 正在获取向量统计信息", username, userId);
 
             Map<String, Object> stats = new HashMap<>();
+
+            // 实时查询数据库获取准确的向量总数
+            long totalCount = documentMilvusMappingRepository.countByUserIdAndIsDeleted(userId, 0);
+            
+            // 获取文件数量（也使用实时查询）
+            List<DocumentMilvusMapping> mappings = getUserMappingsFromCache(userId);
+            long fileCount = mappings.stream()
+                    .map(DocumentMilvusMapping::getFileRecordId)
+                    .distinct()
+                    .count();
 
             // 生成用户专属collection名称
             String collectionName = username + "_" + userId;
@@ -639,37 +648,46 @@ public class VectorStoreService {
 
             if (!hasCollectionResponse.getData()) {
                 log.info("Collection {} 不存在，返回默认统计信息", collectionName);
-                stats.put("totalCount", 0L);
+                stats.put("totalCount", totalCount);
                 stats.put("collectionExists", false);
                 stats.put("dimension", milvusConfig.getDimension());
+                stats.put("fileCount", fileCount);
+                stats.put("vectorStorageUsed", 0L);
+                stats.put("vectorStorageQuota", 0L);
+                stats.put("vectorStorageUsagePercentage", 0.0);
                 milvusClient.close();
                 return stats;
             }
 
-            // 获取collection统计信息
-            R<GetCollectionStatisticsResponse> response = milvusClient
-                    .getCollectionStatistics(GetCollectionStatisticsParam.newBuilder()
-                            .withCollectionName(collectionName)
-                            .build());
+            // 计算向量存储容量
+            // 每个向量大约占用 4KB (1024维 * 4字节/浮点数) + 元数据开销
+            long vectorStorageUsed = totalCount * 4096; // 简化计算，每个向量约4KB
+            
+            // 根据用户等级设置向量存储配额
+            // 普通用户：1GB向量存储，进阶用户：10GB向量存储
+            long vectorStorageQuota = 1073741824L; // 默认1GB
+            // 这里可以通过用户服务获取用户等级信息来设置不同的配额
+            // 暂时使用默认值
 
-            GetCollStatResponseWrapper wrapper = new GetCollStatResponseWrapper(response.getData());
-            long totalCount = wrapper.getRowCount();
-
-            // 获取文件数量
-            List<DocumentMilvusMapping> mappings = getUserMappingsFromCache(userId);
-            long fileCount = mappings.stream()
-                    .map(DocumentMilvusMapping::getFileRecordId)
-                    .distinct()
-                    .count();
+            // 计算使用百分比
+            double vectorStorageUsagePercentage = vectorStorageQuota > 0 ? 
+                (double) vectorStorageUsed / vectorStorageQuota * 100 : 0.0;
 
             stats.put("totalCount", totalCount);
             stats.put("collectionExists", true);
             stats.put("collectionName", collectionName);
             stats.put("dimension", milvusConfig.getDimension());
             stats.put("fileCount", fileCount);
+            stats.put("vectorStorageUsed", vectorStorageUsed);
+            stats.put("vectorStorageQuota", vectorStorageQuota);
+            stats.put("vectorStorageUsagePercentage", Math.round(vectorStorageUsagePercentage * 100.0) / 100.0);
+            stats.put("formattedVectorStorageUsed", formatBytes(vectorStorageUsed));
+            stats.put("formattedVectorStorageQuota", formatBytes(vectorStorageQuota));
+            stats.put("formattedVectorStorageRemaining", formatBytes(Math.max(0, vectorStorageQuota - vectorStorageUsed)));
             stats.put("lastUpdated", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 
-            log.info("用户 {}({}) 获取向量统计信息完成，总数: {}, 文件数: {}", username, userId, totalCount, fileCount);
+            log.info("用户 {}({}) 获取向量统计信息完成，总数: {}, 文件数: {}, 向量存储: {}/{}", 
+                username, userId, totalCount, fileCount, formatBytes(vectorStorageUsed), formatBytes(vectorStorageQuota));
             
             // 关闭客户端连接
             milvusClient.close();
@@ -679,6 +697,19 @@ public class VectorStoreService {
             log.error("用户 {}({}) 获取向量统计信息失败: {}", username, userId, e.getMessage(), e);
             throw new RuntimeException("获取向量统计信息失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 格式化字节数为可读格式
+     *
+     * @param bytes 字节数
+     * @return 格式化后的字符串
+     */
+    private String formatBytes(long bytes) {
+        if (bytes == 0) return "0 B";
+        String[] units = {"B", "KB", "MB", "GB", "TB"};
+        int digitGroups = (int) (Math.log10(bytes) / Math.log10(1024));
+        return String.format("%.2f %s", bytes / Math.pow(1024, digitGroups), units[digitGroups]);
     }
 
     /**

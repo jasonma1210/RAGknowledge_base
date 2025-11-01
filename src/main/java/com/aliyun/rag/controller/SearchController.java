@@ -28,7 +28,7 @@ import java.io.IOException;
  * @since 2025-09-09
  */
 @RestController
-@RequestMapping("/search")
+@RequestMapping("/api/search")
 
 public class SearchController {
 

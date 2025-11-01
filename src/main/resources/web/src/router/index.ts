@@ -4,7 +4,7 @@ import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import DocumentView from '../views/DocumentView.vue'
 import SearchView from '../views/SearchView.vue'
-import AskView from '../views/AskView.vue'
+import ConversationView from '../views/ConversationView.vue'
 import VectorDataView from '../views/VectorDataView.vue'
 import SystemMonitorView from '../views/SystemMonitorView.vue'
 import ProfileView from '../views/ProfileView.vue'
@@ -38,9 +38,9 @@ const router = createRouter({
           component: SearchView
         },
         {
-          path: '/ask',
-          name: 'ask',
-          component: AskView
+          path: '/conversation',
+          name: 'conversation',
+          component: ConversationView
         },
         {
           path: '/vector-data',

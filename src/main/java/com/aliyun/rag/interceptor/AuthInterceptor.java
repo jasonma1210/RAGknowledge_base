@@ -40,6 +40,13 @@ public class AuthInterceptor implements HandlerInterceptor {
     
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        String requestURI = request.getRequestURI();
+        
+        // 排除监控端点，无需认证
+        if (requestURI.startsWith("/actuator/")) {
+            return true;
+        }
+        
         // 从请求头获取访问令牌
         String token = request.getHeader("Authorization");
         if (token != null && token.startsWith("Bearer ")) {

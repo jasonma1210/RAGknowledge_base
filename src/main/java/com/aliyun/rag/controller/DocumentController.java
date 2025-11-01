@@ -40,7 +40,7 @@ import java.util.concurrent.CompletableFuture;
  * @since 2025-01-18
  */
 @RestController
-@RequestMapping("/documents")
+@RequestMapping("/api/documents")
 public class DocumentController {
     
     private static final Logger log = LoggerFactory.getLogger(DocumentController.class);
@@ -287,13 +287,38 @@ public class DocumentController {
         }
         
         // 从七牛云下载文件
-        byte[] fileData = qiniuUploadService.downloadFile(documentInfo.getFileName());
+        byte[] fileData = null;
+        String fileKey = null;
+        
+        // 优先使用downloadUrl作为文件key
+        if (documentInfo.getDownloadUrl() != null && !documentInfo.getDownloadUrl().trim().isEmpty()) {
+            fileKey = documentInfo.getDownloadUrl();
+        } else {
+            // 如果没有downloadUrl，尝试使用fileName
+            fileKey = documentInfo.getFileName();
+        }
+        
+        if (fileKey != null && !fileKey.trim().isEmpty()) {
+            fileData = qiniuUploadService.downloadFile(fileKey);
+        }
         
         if (fileData == null) {
+            // 检查是否是七牛云配置问题
+            try {
+                // 尝试检查七牛云配置是否有效
+                if (!qiniuUploadService.isConfigValidPublic()) {
+                    // 七牛云配置无效，返回友好的错误信息
+                    return ResponseEntity.badRequest()
+                            .body(("文件下载服务暂时不可用，七牛云配置无效。请联系管理员配置正确的七牛云参数。").getBytes());
+                }
+            } catch (Exception e) {
+                log.warn("检查七牛云配置失败: {}", e.getMessage());
+            }
+            
             throw new BusinessException(ErrorCode.FILE_NOT_FOUND);
         }
         
-        // 设置响应头
+        // 设置响应头，使用原始文件名
         String filename = documentInfo.getFileName();
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")

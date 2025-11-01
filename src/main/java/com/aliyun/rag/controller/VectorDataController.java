@@ -27,7 +27,7 @@ import java.util.Map;
  * @since 2025-09-15
  */
 @RestController
-@RequestMapping("/vector-data")
+@RequestMapping("/api/vector-data")
 
 public class VectorDataController {
 

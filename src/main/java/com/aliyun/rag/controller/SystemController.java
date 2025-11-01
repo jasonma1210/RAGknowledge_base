@@ -34,7 +34,7 @@ import java.util.Map;
  * @since 2025-09-15
  */
 @RestController
-@RequestMapping("/system")
+@RequestMapping("/api/system")
 
 public class SystemController {
     
