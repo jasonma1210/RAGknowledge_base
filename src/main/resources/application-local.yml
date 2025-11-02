@@ -5,6 +5,31 @@ spring:
     multipart:
       max-file-size: 100MB
       max-request-size: 100MB
+  datasource:
+    master:
+      jdbc-url: jdbc:mysql://localhost:3306/rag_knowledge_base?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+      username: root
+      password: 12345678
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 20
+        minimum-idle: 5
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        leak-detection-threshold: 60000
+    slave:
+      jdbc-url: jdbc:mysql://localhost:3306/rag_knowledge_base?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+      username: root
+      password: 12345678
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 20
+        minimum-idle: 5
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        leak-detection-threshold: 60000
   data:
     redis:
       host: localhost
@@ -18,20 +43,6 @@ spring:
           max-wait: -1ms
           max-idle: 8
           min-idle: 0
-  datasource:
-    url: jdbc:mysql://localhost:3306/rag_knowledge_base?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: 12345678
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    # HikariCP连接池优化配置
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      leak-detection-threshold: 60000
-      connection-test-query: SELECT 1
   jpa:
     hibernate:
       ddl-auto: update
@@ -54,15 +65,15 @@ langchain4j:
         model-name: qwen-max-latest
         temperature: 0.7
         max-tokens: 2000
-        api-key: sk-321321312
+        api-key: sk-04408f09a97047f59418251783cd7d7f
       streaming-chat-model:
         model-name: qwen-max-latest
         temperature: 0.7
         max-tokens: 2000
-        api-key: sk-21321321
+        api-key: sk-04408f09a97047f59418251783cd7d7f
       embedding-model:
         model-name: text-embedding-v4
-        api-key: sk-213213213213
+        api-key: sk-04408f09a97047f59418251783cd7d7f
 
 document:
   chunk:
