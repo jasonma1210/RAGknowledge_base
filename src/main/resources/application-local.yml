@@ -65,15 +65,15 @@ langchain4j:
         model-name: qwen-max-latest
         temperature: 0.7
         max-tokens: 2000
-        api-key: sk-04408f09a97047f59418251783cd7d7f
+        api-key: sk-121
       streaming-chat-model:
         model-name: qwen-max-latest
         temperature: 0.7
         max-tokens: 2000
-        api-key: sk-04408f09a97047f59418251783cd7d7f
+        api-key: sk-121
       embedding-model:
         model-name: text-embedding-v4
-        api-key: sk-04408f09a97047f59418251783cd7d7f
+        api-key: sk-121121
 
 document:
   chunk:
